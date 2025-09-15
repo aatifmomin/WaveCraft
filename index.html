@@ -141,6 +141,10 @@
             background-color: #dbeafe;
             outline: 2px solid #60a5fa;
         }
+        .cell-error {
+            background-color: #fee2e2 !important; /* red-100 */
+            outline: 1px solid #ef4444 !important; /* red-500 */
+        }
         ::-webkit-scrollbar {
             width: 8px;
             height: 10px;
@@ -283,6 +287,24 @@
         input:checked + .slider:before {
             transform: translateX(18px);
         }
+        #signal-color-picker {
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+            width: 38px;
+            height: 38px;
+            background-color: transparent;
+            border: none;
+            cursor: pointer;
+        }
+        #signal-color-picker::-webkit-color-swatch {
+            border-radius: 0.5rem;
+            border: 2px solid #e5e7eb;
+        }
+        #signal-color-picker::-moz-color-swatch {
+            border-radius: 0.5rem;
+            border: 2px solid #e5e7eb;
+        }
     </style>
 </head>
 <body class="text-gray-800 flex flex-col">
@@ -335,6 +357,10 @@
             <i class="ph ph-arrow-line-right"></i>
         </button>
         
+        <div id="color-picker-container" class="hidden items-center" title="Change Signal Color">
+            <input type="color" id="signal-color-picker">
+        </div>
+
         <div class="h-6 w-px bg-gray-300 mx-2"></div>
 
         <div class="flex items-center space-x-2">
@@ -510,6 +536,9 @@
             const nextEdgeBtn = document.getElementById('nextEdgeBtn');
             const posEdgeToggle = document.getElementById('pos-edge-toggle');
             const negEdgeToggle = document.getElementById('neg-edge-toggle');
+            const colorPickerContainer = document.getElementById('color-picker-container');
+            const colorPicker = document.getElementById('signal-color-picker');
+
 
             // Signal Gen elements
             const signalContextMenu = document.getElementById('signal-context-menu');
@@ -564,6 +593,9 @@
             let posEdgeEnabled = false;
             let negEdgeEnabled = false;
 
+            // --- Edit State ---
+            let valueOnFocus = '';
+
 
             const createSignal = (name, range, values) => ({ 
                 name, 
@@ -572,7 +604,8 @@
                 id: Math.random().toString(36).substr(2, 9),
                 isExpanded: false,
                 isBusMember: false,
-                busParentName: null
+                busParentName: null,
+                color: '#3B82F6' // Default color
             });
 
             const render = () => {
@@ -706,40 +739,26 @@
                 }
                 tableHeader.appendChild(headerRow);
 
-                signals.forEach((signal, signalIndex) => {
-                    const row = document.createElement('tr');
-                    
-                    const nameCell = document.createElement('td');
-                    nameCell.className = `sticky left-0 z-0 text-left`;
-                    nameCell.style.width = `${signalNameColWidth}px`;
-                    nameCell.style.minWidth = `${signalNameColWidth}px`;
-
+                const tableRowsHTML = signals.map((signal, signalIndex) => {
                     let namePrefix = '';
                     const rangeMatch = signal.range.match(/\[(\d+):(\d+)\]/);
-                     if (rangeMatch && parseInt(rangeMatch[1], 10) > parseInt(rangeMatch[2], 10) && !signal.isBusMember) {
+                    if (rangeMatch && parseInt(rangeMatch[1], 10) > parseInt(rangeMatch[2], 10) && !signal.isBusMember) {
                         namePrefix = signal.isExpanded ? '[-] ' : '[+] ';
                     }
-                    if (signal.isBusMember) {
-                        nameCell.style.paddingLeft = '1.5rem';
-                    }
-                    nameCell.innerHTML = `<span class="font-mono">${namePrefix}</span><input type="text" value="${signal.name}" data-signal-index="${signalIndex}" data-type="name" class="signal-input w-auto" ${signal.isBusMember ? 'readonly' : ''}>`;
-                    row.appendChild(nameCell);
+                    const indentation = signal.isBusMember ? 'padding-left: 1.5rem;' : '';
+
+                    const nameCellHTML = `<td class="sticky left-0 z-0 text-left" style="width: ${signalNameColWidth}px; min-width: ${signalNameColWidth}px; ${indentation}"><span class="font-mono">${namePrefix}</span><input type="text" value="${signal.name}" data-signal-index="${signalIndex}" data-type="name" class="signal-input w-auto" ${signal.isBusMember ? 'readonly' : ''}></td>`;
+                    const rangeCellHTML = `<td style="width: ${rangeColWidth}px; min-width: ${rangeColWidth}px;"><input type="text" value="${signal.range}" data-signal-index="${signalIndex}" data-type="range" class="signal-input text-center" ${signal.isBusMember ? 'readonly' : ''}></td>`;
                     
-                    row.innerHTML += `
-                        <td style="width: ${rangeColWidth}px; min-width: ${rangeColWidth}px;"><input type="text" value="${signal.range}" data-signal-index="${signalIndex}" data-type="range" class="signal-input text-center" ${signal.isBusMember ? 'readonly' : ''}></td>
-                    `;
-                    
-                    signal.values.forEach((val, timeIndex) => {
-                         const cell = document.createElement('td');
-                         cell.setAttribute('contenteditable', !isSelectionMode && !signal.isBusMember);
-                         cell.className = 'value-cell';
-                         cell.textContent = val;
-                         cell.dataset.signalIndex = signalIndex;
-                         cell.dataset.timeIndex = timeIndex;
-                         row.appendChild(cell);
-                    });
-                    tableBody.appendChild(row);
-                });
+                    const valuesHTML = signal.values.map((val, timeIndex) => {
+                        const isError = !isValidValue(signal, val) ? 'cell-error' : '';
+                        return `<td class="value-cell ${isError}" contenteditable="${!isSelectionMode && !signal.isBusMember}" data-signal-index="${signalIndex}" data-time-index="${timeIndex}">${val}</td>`;
+                    }).join('');
+
+                    return `<tr>${nameCellHTML}${rangeCellHTML}${valuesHTML}</tr>`;
+                }).join('');
+                
+                tableBody.innerHTML = tableRowsHTML;
             };
 
             const parseValue = (valStr) => {
@@ -751,6 +770,34 @@
                     return { value: match[1].trim(), delay: delay };
                 }
                 return { value: valStr, delay: 0 };
+            };
+
+            const isValidValue = (signal, rawValue) => {
+                const { value } = parseValue(rawValue);
+                const upperValue = value.toUpperCase();
+
+                if (['X', 'Z'].includes(upperValue)) return true;
+                
+                const rangeMatch = signal.range.match(/\[(\d+):(\d+)\]/);
+
+                if (rangeMatch && !signal.isBusMember) { // It's a bus
+                    const high = parseInt(rangeMatch[1], 10);
+                    const low = parseInt(rangeMatch[2], 10);
+                    const width = Math.abs(high - low) + 1;
+                    const maxValue = (2 ** width) - 1;
+
+                    let numericValue;
+                    if (value.toLowerCase().startsWith('0x')) {
+                        numericValue = parseInt(value, 16);
+                    } else {
+                        numericValue = parseInt(value, 10);
+                    }
+                    if (isNaN(numericValue)) return true; // Assume FSM state name is valid
+                    return numericValue <= maxValue;
+
+                } else { // It's a single bit signal
+                    return ['0', '1'].includes(upperValue);
+                }
             };
 
             const drawArrow = (ctx, x, y, up) => {
@@ -808,7 +855,7 @@
                     const xStart = startPoint.t * TIMESTEP_WIDTH;
                     const xEnd = endPoint.t * TIMESTEP_WIDTH;
                     
-                    ctx.strokeStyle = COLORS.line;
+                    ctx.strokeStyle = signal.color || COLORS.line;
                     ctx.lineWidth = 2;
                     
                     if (startVal === '1' || startVal === '0') {
@@ -832,7 +879,7 @@
                     if (startVal !== endVal) {
                         const y1 = yLevel(startVal);
                         const y2 = yLevel(endVal);
-                        ctx.strokeStyle = COLORS.line;
+                        ctx.strokeStyle = signal.color || COLORS.line;
                         ctx.beginPath();
                         ctx.moveTo(xEnd, y1);
                         ctx.lineTo(xEnd, y2);
@@ -893,7 +940,7 @@
                             ctx.stroke();
                             break;
                         default:
-                            ctx.strokeStyle = COLORS.bus;
+                            ctx.strokeStyle = signal.color || COLORS.bus;
                             ctx.lineWidth = 2;
                             ctx.beginPath();
                             ctx.moveTo(xStart, yTop); ctx.lineTo(xEnd, yTop);
@@ -913,7 +960,7 @@
                     
                     const endVal = endPoint.val.toUpperCase();
                     if (startVal !== endVal) {
-                        ctx.strokeStyle = COLORS.bus;
+                        ctx.strokeStyle = signal.color || COLORS.bus;
                         ctx.lineWidth = 2;
                         ctx.beginPath();
                         ctx.moveTo(xEnd + 2, yTop - 2); ctx.lineTo(xEnd - 2, yBottom + 2);
@@ -934,46 +981,50 @@
                 render();
             });
             
+            tableBody.addEventListener('focusin', (e) => {
+                if (e.target.classList.contains('value-cell')) {
+                    valueOnFocus = e.target.textContent;
+                }
+            });
+
             tableBody.addEventListener('input', (e) => {
                 if (isSelectionMode) return;
                 const target = e.target;
                 const signalIndex = target.dataset.signalIndex;
                 if (signalIndex === undefined) return;
-
-                // Handle name and range changes
+                
                 if (target.dataset.type === 'name') {
                     signals[signalIndex].name = target.value;
                     renderSignalLabels();
-                    return;
-                }
-                if (target.dataset.type === 'range') {
+                } else if (target.dataset.type === 'range') {
                     signals[signalIndex].range = target.value;
-                    renderSignalLabels();
+                } else if (target.dataset.timeIndex !== undefined) {
+                    signals[signalIndex].values[target.dataset.timeIndex] = target.textContent;
                     renderCanvas();
-                    return;
                 }
+            });
+            
+            tableBody.addEventListener('focusout', (e) => {
+                 if (isSelectionMode) return;
+                const target = e.target;
+                const signalIndex = parseInt(target.dataset.signalIndex, 10);
+                if (isNaN(signalIndex)) return;
 
-                // Handle value changes (including delays)
                 const timeIndex = parseInt(target.dataset.timeIndex, 10);
-                if (!isNaN(timeIndex)) {
-                    const oldRawValue = signals[signalIndex].values[timeIndex];
+
+                if (target.classList.contains('value-cell') && !isNaN(timeIndex)) {
+                    // It's a value cell that lost focus, handle delay propagation
                     const newRawValue = target.textContent;
-
-                    const oldParsed = parseValue(oldRawValue);
+                    const oldParsed = parseValue(valueOnFocus);
                     const newParsed = parseValue(newRawValue);
-
-                    signals[signalIndex].values[timeIndex] = newRawValue;
-
                     const delayDifference = newParsed.delay - oldParsed.delay;
 
                     if (Math.abs(delayDifference) > 0.001) {
                         for (let i = timeIndex + 1; i < timeStepCount; i++) {
                             const subsequentRawValue = signals[signalIndex].values[i];
                             const subsequentParsed = parseValue(subsequentRawValue);
-
                             let combinedDelay = subsequentParsed.delay + delayDifference;
                             combinedDelay = Math.max(0, Math.min(0.99, combinedDelay));
-
                             let finalValue;
                             if (combinedDelay > 0.001) {
                                 const delayString = parseFloat(combinedDelay.toFixed(2)).toString();
@@ -983,15 +1034,11 @@
                             }
                             signals[signalIndex].values[i] = finalValue;
                         }
-                        render();
-                    } else {
-                        renderCanvas();
                     }
                 }
-            });
-            
-            tableBody.addEventListener('focusout', (e) => {
-                 if (e.target.dataset.type === 'range') render();
+                
+                // Always do a full render on focusout to validate everything
+                render();
             });
 
             let isSyncing = false;
@@ -1748,8 +1795,11 @@
                         
                         if (selectedSignalIndex === index) {
                             selectedSignalIndex = null; // Deselect if clicked again
+                            colorPickerContainer.classList.add('hidden');
                         } else {
                             selectedSignalIndex = index;
+                            colorPickerContainer.classList.remove('hidden');
+                            colorPicker.value = signals[index].color;
                         }
                         renderCanvas();
                         renderSignalLabels();
@@ -1895,6 +1945,15 @@
                 }
             };
 
+            const addColorPickerLogic = () => {
+                colorPicker.addEventListener('input', (e) => {
+                    if (selectedSignalIndex !== null) {
+                        signals[selectedSignalIndex].color = e.target.value;
+                        renderCanvas();
+                    }
+                });
+            };
+
             timeStepCount = 15;
             signals.push(createSignal('clk', '', ['0','1','0','1','0','1','0','1','0','1','0','1','0','1','0']));
             signals.push(createSignal('a_very_long_signal_name_that_needs_resizing', '', ['0','0','1','1','1','0','0','0','1','1','0','0','0','0','0']));
@@ -1914,6 +1973,7 @@
             addSignalSelectionLogic();
             addEdgeNavigationLogic();
             addTableRowSelectionLogic();
+            addColorPickerLogic();
 
             signalLabels.addEventListener('dblclick', (e) => {
                 const row = e.target.closest('.signal-label-row');
@@ -1965,3 +2025,4 @@
     </script>
 </body>
 </html>
+
