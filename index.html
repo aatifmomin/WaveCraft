@@ -3,2077 +3,1310 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Digital Waveform Viewer</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <title>SS Wave Gen — RTL Prototyping</title>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Segoe+UI:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
+        :root {
+            --bg: #f3f3f3;
+            --surface: #ffffff;
+            --surface2: #fafafa;
+            --surface3: #f0f0f0;
+            --border: #e0e0e0;
+            --border2: #d0d0d0;
+            --accent: #0067c0;
+            --accent-hover: #005ba3;
+            --accent-light: #e8f1fb;
+            --accent-light2: #cce0f5;
+            --text: #1a1a1a;
+            --text2: #444;
+            --text3: #767676;
+            --text4: #a0a0a0;
+            --red: #c42b1c;
+            --red-bg: #fde7e9;
+            --green: #107c10;
+            --green-bg: #dff6dd;
+            --amber: #9b5100;
+            --amber-bg: #fff4ce;
+            --shadow-sm: 0 1px 3px rgba(0,0,0,0.08);
+            --shadow: 0 2px 8px rgba(0,0,0,0.10);
+            --shadow-lg: 0 4px 20px rgba(0,0,0,0.12);
+            --radius: 6px;
+            --radius-lg: 8px;
+            --font: 'Segoe UI', system-ui, sans-serif;
+            --mono: 'JetBrains Mono', 'Consolas', monospace;
+        }
+
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
         html, body {
             height: 100%;
-            margin: 0;
-            padding: 0;
             overflow: hidden;
-            font-family: 'Inter', sans-serif;
-            background-color: #f9fafb; /* gray-50 */
+            background: var(--bg);
+            color: var(--text);
+            font-family: var(--font);
+            font-size: 13px;
         }
-        .main-container {
+
+        /* ===== TITLEBAR ===== */
+        .titlebar {
+            height: 48px;
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            padding: 0 10px;
+            flex-shrink: 0;
+            box-shadow: var(--shadow-sm);
+            z-index: 30;
+            position: relative;
+        }
+        .logo-wrap {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-right: 6px;
+            padding-right: 10px;
+            border-right: 1px solid var(--border);
+        }
+        .logo-icon {
+            width: 30px; height: 30px;
+            background: var(--accent);
+            border-radius: var(--radius);
+            display: flex; align-items: center; justify-content: center;
+            color: #fff;
+            font-weight: 700;
+            font-size: 13px;
+            letter-spacing: -0.5px;
+            font-family: var(--font);
+        }
+        .logo-text {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text);
+            letter-spacing: 0.2px;
+        }
+        .logo-sub {
+            font-size: 10px;
+            color: var(--text3);
+            font-weight: 400;
+        }
+
+        /* Toolbar separator */
+        .sep { width: 1px; height: 22px; background: var(--border); margin: 0 3px; flex-shrink: 0; }
+
+        /* Toolbar buttons - Windows 11 style */
+        .tbtn {
+            min-width: 32px; height: 32px;
+            background: transparent;
+            border: 1px solid transparent;
+            border-radius: var(--radius);
+            color: var(--text2);
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer;
+            transition: background 0.1s, border-color 0.1s;
+            font-size: 15px;
+            flex-shrink: 0;
+            padding: 0 6px;
+            gap: 4px;
+            white-space: nowrap;
+        }
+        .tbtn:hover { background: var(--surface3); border-color: var(--border2); }
+        .tbtn:active { background: var(--accent-light); }
+        .tbtn.active { background: var(--accent-light); border-color: var(--accent-light2); color: var(--accent); }
+        .tbtn .lbl { font-size: 11px; font-family: var(--font); color: inherit; }
+        .tbtn.accent { background: var(--accent); color: #fff; border-color: var(--accent); }
+        .tbtn.accent:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
+        .tbtn.ai-toggle { background: var(--accent-light); color: var(--accent); border-color: var(--accent-light2); font-size: 12px; padding: 0 10px; min-width: 80px; }
+        .tbtn.ai-toggle:hover { background: var(--accent-light2); }
+
+        /* Value set toolbar */
+        .val-strip { display: none; align-items: center; gap: 3px; padding: 0 8px; background: var(--surface3); border: 1px solid var(--border); border-radius: var(--radius); height: 30px; }
+        .val-strip.visible { display: flex; }
+        .val-strip span { font-size: 11px; color: var(--text3); margin-right: 4px; }
+        .vbtn { padding: 2px 10px; height: 22px; background: var(--surface); border: 1px solid var(--border2); border-radius: 4px; color: var(--text); font-family: var(--mono); font-size: 11px; font-weight: 600; cursor: pointer; transition: all 0.1s; }
+        .vbtn:hover { background: var(--accent-light); border-color: var(--accent); color: var(--accent); }
+        .vbtn.x { color: var(--red); }
+        .vbtn.z { color: var(--amber); }
+
+        .spacer { flex: 1; }
+        .readout-wrap { display: flex; align-items: center; gap: 5px; }
+        .readout-lbl { font-size: 10px; color: var(--text3); white-space: nowrap; }
+        .readout {
+            font-family: var(--mono); font-size: 11px;
+            background: var(--surface3); border: 1px solid var(--border);
+            color: var(--accent); border-radius: var(--radius); padding: 3px 8px;
+            width: 80px; text-align: center; outline: none;
+        }
+
+        /* Toggle */
+        .tog-wrap { display: flex; align-items: center; gap: 4px; }
+        .tog-lbl { font-size: 10px; color: var(--text3); }
+        .switch { position: relative; display: inline-block; width: 34px; height: 18px; }
+        .switch input { opacity:0; width:0; height:0; }
+        .slider { position: absolute; cursor: pointer; inset: 0; background: #ccc; border-radius: 18px; transition: .25s; }
+        .slider:before { position:absolute; content:""; height:14px; width:14px; left:2px; bottom:2px; background:#fff; border-radius:50%; transition:.25s; }
+        input:checked + .slider { background: var(--accent); }
+        input:checked + .slider:before { transform: translateX(16px); }
+
+        /* ===== APP LAYOUT ===== */
+        .app-body {
+            display: flex;
+            height: calc(100vh - 48px);
+            overflow: hidden;
+        }
+
+        /* ===== MAIN AREA ===== */
+        .main-area {
+            flex: 1;
             display: flex;
             flex-direction: column;
-            height: calc(100vh - 52px); /* Full height minus header */
+            overflow: hidden;
+            min-width: 0;
         }
         .top-panel {
             display: flex;
-            height: 50%; /* Replaces flex-basis */
+            height: 52%;
             overflow: hidden;
-            flex-shrink: 0; /* Prevents shrinking */
-            min-height: 0; /* Prevent flexbox overflow issues */
-        }
-        .signal-labels {
-            /* width is now set by JS */
             flex-shrink: 0;
-            background-color: #f3f4f6; /* gray-100 */
-            border-right: 2px solid #d1d5db; /* gray-300 */
+            min-height: 0;
+            border-bottom: 1px solid var(--border);
+        }
+
+        /* Signal labels */
+        .signal-labels {
+            flex-shrink: 0;
+            background: var(--surface2);
+            border-right: 1px solid var(--border);
             display: flex;
             flex-direction: column;
         }
-        .signal-labels-body {
-            flex-grow: 1;
-            overflow: auto;
-            scrollbar-width: none; /* Firefox */
-            -ms-overflow-style: none;  /* IE and Edge */
+        .signal-labels-body { flex-grow: 1; overflow: auto; scrollbar-width: none; }
+        .signal-labels-body::-webkit-scrollbar { display: none; }
+        .sig-lbl-header {
+            height: 22px;
+            border-bottom: 1px solid var(--border);
+            background: var(--surface3);
+            font-size: 10px;
+            font-weight: 600;
+            color: var(--text3);
+            letter-spacing: 0.5px;
+            display: flex; align-items: center;
         }
-        .signal-labels-body::-webkit-scrollbar {
-            display: none; /* Hide scrollbar for Chrome, Safari, and Opera */
-        }
-        .signal-label-header, .signal-label-row {
-            height: 50px;
-            display: flex;
-            align-items: center;
-            flex-shrink: 0;
-        }
-        .signal-label-header {
-            height: 25px;
-            border-bottom: 1px solid #d1d5db; /* gray-300 */
-            color: #4b5563; /* gray-600 */
-            font-size: 0.75rem;
-            font-weight: bold;
-        }
-        .signal-label-row {
-            border-bottom: 1px solid #e5e7eb; /* gray-200 */
-            color: #1f2937; /* gray-800 */
-            font-size: 0.875rem;
+        .sig-lbl-row {
+            height: 44px;
+            display: flex; align-items: center;
+            border-bottom: 1px solid var(--border);
+            color: var(--text2);
+            font-size: 12px;
             cursor: pointer;
             user-select: none;
+            transition: background 0.1s;
+            font-family: var(--mono);
         }
-        .signal-label-row.selected-row {
-            background-color: #e5e7eb; /* gray-200 */
+        .sig-lbl-row:hover { background: var(--surface3); }
+        .sig-lbl-row.selected-row { background: var(--accent-light); color: var(--accent); }
+        .sig-name-col, .sig-range-col {
+            overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+            padding: 0 6px; flex-shrink: 0;
         }
-        .signal-name-col, .range-col {
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-            padding: 0 0.5rem;
-            flex-shrink: 0; /* Prevents flex items from shrinking */
-        }
-        .col-resizer {
-            width: 5px;
-            background-color: transparent;
-            cursor: col-resize;
-            flex-shrink: 0;
-            transition: background-color 0.2s;
-        }
-        .col-resizer:hover {
-             background-color: #4338ca;
-        }
+        .col-resizer { width: 4px; background: transparent; cursor: col-resize; flex-shrink: 0; }
+        .col-resizer:hover { background: var(--accent); }
+
+        /* Canvas */
         .canvas-wrapper {
             flex-grow: 1;
             overflow: auto;
+            background: #fff;
         }
+        .canvas-wrapper::-webkit-scrollbar { width: 8px; height: 8px; }
+        .canvas-wrapper::-webkit-scrollbar-track { background: var(--surface3); }
+        .canvas-wrapper::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 4px; }
+
+        /* Panel resizer */
+        .panel-resizer {
+            height: 4px;
+            background: var(--border);
+            cursor: row-resize;
+            flex-shrink: 0;
+            transition: background 0.15s;
+        }
+        .panel-resizer:hover { background: var(--accent); }
+
+        /* Table */
         .table-wrapper {
-            overflow-y: auto;
-            position: relative;
-            flex-grow: 1; /* This will make it fill the remaining space */
-            min-height: 0; /* Prevent flexbox overflow issues */
-        }
-        table {
-            border-collapse: collapse;
-        }
-        th, td {
-            border: 1px solid #d1d5db; /* gray-300 */
-            padding: 0.5rem;
-            text-align: center;
-            white-space: nowrap;
-        }
-        td:first-child {
-            cursor: pointer;
-            user-select: none;
-        }
-        th {
-            background-color: #f3f4f6; /* gray-100 */
-            color: #1f2937; /* gray-800 */
-            position: sticky;
-            top: 0;
-            z-index: 10;
-        }
-        td {
-             background-color: #ffffff;
-        }
-        tr.table-row-selected td {
-            background-color: #dbeafe; /* A light blue for selected table rows */
-        }
-        .signal-input {
-            background-color: transparent;
-            color: #1f2937; /* gray-800 */
-            border: none;
-            width: 100%;
-            text-align: left;
-            padding: 0;
-        }
-        .signal-input:focus {
-            outline: 1px solid #3b82f6;
-            background-color: #eff6ff;
-        }
-        .value-cell:focus {
-            outline: 2px solid #3b82f6;
-            background-color: #eff6ff;
-        }
-        .value-cell.selected {
-            background-color: #dbeafe;
-            outline: 2px solid #60a5fa;
-        }
-        .cell-error {
-            background-color: #fee2e2 !important; /* red-100 */
-            outline: 1px solid #ef4444 !important; /* red-500 */
-        }
-        ::-webkit-scrollbar {
-            width: 8px;
-            height: 10px;
-        }
-        ::-webkit-scrollbar-track {
-            background: #f3f4f6; /* gray-100 */
-        }
-        ::-webkit-scrollbar-thumb {
-            background: #d1d5db; /* gray-300 */
-            border-radius: 4px;
-        }
-        ::-webkit-scrollbar-thumb:hover {
-            background: #9ca3af; /* gray-400 */
-        }
-        .btn-active {
-            background-color: #2563eb !important;
-            box-shadow: 0 0 0 2px #ffffff, 0 0 0 4px #93c5fd;
-        }
-        /* Modal Styles */
-        .modal-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0,0,0,0.5);
-            z-index: 999;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
-        .modal {
-            background-color: white;
-            padding: 1.5rem;
-            border-radius: 0.5rem;
-            box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05);
-            width: 90%;
-            max-width: 400px;
-        }
-        .modal-title {
-            font-size: 1.25rem;
-            font-weight: 600;
-            margin-bottom: 1rem;
-        }
-        .modal-content label {
-            display: block;
-            margin-bottom: 0.5rem;
-            font-weight: 500;
-        }
-         .modal-content input[type="number"], .modal-content input[type="password"], .modal-content input[type="text"], .modal-content select, .modal-content textarea {
-            width: 100%;
-            padding: 0.5rem;
-            border: 1px solid #d1d5db;
-            border-radius: 0.375rem;
-            margin-bottom: 1rem;
-        }
-         .modal-actions {
-            display: flex;
-            justify-content: flex-end;
-            gap: 0.5rem;
-            margin-top: 1rem;
-        }
-        .fsm-state-entry {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            margin-bottom: 0.5rem;
-        }
-        .fsm-state-entry input:first-child {
             flex-grow: 1;
+            overflow: auto;
+            background: var(--surface);
+            min-height: 0;
         }
-        .fsm-state-entry input:last-child {
-            width: 80px;
-        }
-        /* New Button Styles */
-        .control-btn {
-            background-color: #3B82F6;
-            color: white;
-            width: 38px;
-            height: 38px;
+        .table-wrapper::-webkit-scrollbar { width: 8px; height: 8px; }
+        .table-wrapper::-webkit-scrollbar-track { background: var(--surface3); }
+        .table-wrapper::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 4px; }
+        table { border-collapse: collapse; }
+        th, td { border: 1px solid var(--border); padding: 3px 6px; text-align: center; white-space: nowrap; font-family: var(--mono); font-size: 11px; }
+        td:first-child { cursor: pointer; user-select: none; }
+        th { background: var(--surface3); color: var(--text3); position: sticky; top: 0; z-index: 10; font-size: 10px; letter-spacing: 0.5px; font-weight: 600; font-family: var(--font); }
+        td { background: #fff; color: var(--text); }
+        tr.table-row-selected td { background: var(--accent-light); }
+        .signal-input { background: transparent; color: var(--text); border: none; width: 100%; text-align: left; padding: 0; font-family: var(--mono); font-size: 11px; }
+        .signal-input:focus { outline: 1px solid var(--accent); background: var(--accent-light); padding: 0 2px; }
+        .value-cell:focus { outline: 2px solid var(--accent); background: var(--accent-light); }
+        .value-cell.selected { background: var(--accent-light) !important; outline: 1px solid var(--accent); }
+        .cell-error { background: var(--red-bg) !important; outline: 1px solid var(--red) !important; color: var(--red) !important; }
+
+        /* ===== AI PANEL (Right Side) ===== */
+        .ai-panel {
+            width: 300px;
+            flex-shrink: 0;
+            background: var(--surface);
+            border-left: 1px solid var(--border);
             display: flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 0.5rem;
-            transition: background-color 0.2s;
+            flex-direction: column;
+            overflow: hidden;
+            transition: width 0.22s ease;
         }
-        .control-btn:hover {
-            background-color: #2563EB;
+        .ai-panel.collapsed { width: 0; border-left: none; }
+        .ai-panel-inner { width: 300px; display: flex; flex-direction: column; height: 100%; overflow: hidden; }
+
+        .ai-panel-header {
+            height: 40px;
+            background: var(--surface2);
+            border-bottom: 1px solid var(--border);
+            display: flex; align-items: center;
+            padding: 0 12px;
+            gap: 6px;
+            flex-shrink: 0;
         }
-        .control-btn i {
-            font-size: 1.25rem; /* text-xl */
+        .ai-panel-header span { font-size: 12px; font-weight: 600; color: var(--text); flex: 1; }
+        .ai-panel-header i { color: var(--accent); font-size: 14px; }
+        .ai-close-btn { width: 22px; height: 22px; border: none; background: transparent; border-radius: 4px; cursor: pointer; display: flex; align-items: center; justify-content: center; color: var(--text3); font-size: 13px; transition: background 0.1s; }
+        .ai-close-btn:hover { background: var(--surface3); color: var(--text); }
+
+        .ai-panel-body { flex: 1; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 10px; }
+        .ai-panel-body::-webkit-scrollbar { width: 6px; }
+        .ai-panel-body::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+
+        .ai-field-group { display: flex; flex-direction: column; gap: 4px; }
+        .ai-label { font-size: 10px; font-weight: 600; color: var(--text3); letter-spacing: 0.4px; text-transform: uppercase; }
+        .ai-input, .ai-select, .ai-textarea {
+            width: 100%; padding: 6px 8px;
+            background: var(--surface3); border: 1px solid var(--border);
+            border-radius: var(--radius); color: var(--text);
+            font-family: var(--font); font-size: 12px;
+            outline: none; transition: border-color 0.15s;
         }
-        .ai-add-btn {
-             background-color: #3B82F6;
-             color: white;
-             padding: 0.25rem;
-             border-radius: 0.25rem;
-             transition: background-color 0.2s;
+        .ai-input:focus, .ai-select:focus, .ai-textarea:focus { border-color: var(--accent); background: var(--accent-light); }
+        .ai-textarea { resize: vertical; min-height: 52px; font-size: 11px; }
+        .ai-select option { background: var(--surface); }
+
+        .ai-sig-row { display: flex; gap: 4px; margin-bottom: 4px; }
+        .ai-sig-row input { background: var(--surface3); border: 1px solid var(--border); border-radius: var(--radius); padding: 5px 7px; font-family: var(--mono); font-size: 11px; color: var(--text); outline: none; }
+        .ai-sig-row input:focus { border-color: var(--accent); background: var(--accent-light); }
+        .ai-sig-row .sig-n { flex: 1; }
+        .ai-sig-row .sig-r { width: 68px; }
+
+        .ai-scenario-row { position: relative; margin-bottom: 6px; display: flex; gap: 4px; align-items: flex-start; }
+        .ai-scenario-row textarea { flex: 1; background: var(--surface3); border: 1px solid var(--border); border-radius: var(--radius); padding: 5px 7px; font-family: var(--font); font-size: 11px; color: var(--text); outline: none; resize: vertical; min-height: 44px; }
+        .ai-scenario-row textarea:focus { border-color: var(--accent); background: var(--accent-light); }
+        .scenario-del-btn { flex-shrink: 0; width: 22px; height: 22px; background: transparent; border: 1px solid var(--border); border-radius: 4px; cursor: pointer; color: var(--text3); font-size: 12px; display: flex; align-items: center; justify-content: center; transition: all 0.1s; margin-top: 2px; }
+        .scenario-del-btn:hover { background: var(--red-bg); border-color: var(--red); color: var(--red); }
+
+        .add-row-btn {
+            display: flex; align-items: center; gap: 4px;
+            padding: 4px 8px; border: 1px dashed var(--border2); border-radius: var(--radius);
+            background: transparent; color: var(--text3); font-size: 11px; cursor: pointer;
+            transition: all 0.1s; width: 100%;
         }
-        .ai-add-btn:hover {
-            background-color: #2563EB;
+        .add-row-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-light); }
+
+        .ai-response-area { font-family: var(--mono); font-size: 10px; background: var(--surface3); border: 1px solid var(--border); border-radius: var(--radius); padding: 6px 8px; color: var(--text3); min-height: 60px; max-height: 120px; overflow-y: auto; white-space: pre-wrap; word-break: break-all; }
+
+        .ai-status { font-size: 10px; padding: 4px 8px; border-radius: var(--radius); }
+        .ai-status.info { background: var(--accent-light); color: var(--accent); }
+        .ai-status.ok { background: var(--green-bg); color: var(--green); }
+        .ai-status.error { background: var(--red-bg); color: var(--red); }
+
+        .ai-run-btn { width: 100%; height: 34px; background: var(--accent); color: #fff; border: none; border-radius: var(--radius); font-family: var(--font); font-size: 12px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; transition: background 0.15s; }
+        .ai-run-btn:hover { background: var(--accent-hover); }
+        .ai-run-btn:disabled { background: var(--border2); color: var(--text3); cursor: not-allowed; }
+
+        .section-title { font-size: 10px; font-weight: 700; color: var(--text2); letter-spacing: 0.5px; text-transform: uppercase; border-bottom: 1px solid var(--border); padding-bottom: 5px; margin-bottom: 2px; }
+
+        /* ===== MODALS ===== */
+        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.35); z-index: 999; display: flex; justify-content: center; align-items: center; }
+        .modal-overlay.hidden { display: none; }
+        .modal {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: 20px;
+            width: 90%; max-width: 420px;
+            box-shadow: var(--shadow-lg);
         }
-         /* Toggle Switch */
-        .switch {
-            position: relative;
-            display: inline-block;
-            width: 40px;
-            height: 22px;
+        .modal.wide { max-width: 680px; }
+        .modal-title { font-size: 14px; font-weight: 600; color: var(--text); margin-bottom: 14px; display: flex; align-items: center; gap: 6px; }
+        .modal-title i { color: var(--accent); }
+        .modal label { display: block; font-size: 10px; font-weight: 600; color: var(--text3); letter-spacing: 0.4px; text-transform: uppercase; margin-bottom: 4px; margin-top: 10px; }
+        .modal label:first-of-type { margin-top: 0; }
+        .modal input[type="text"], .modal input[type="number"], .modal input[type="password"], .modal select, .modal textarea {
+            width: 100%; padding: 7px 9px;
+            background: var(--surface3); border: 1px solid var(--border2); border-radius: var(--radius);
+            color: var(--text); font-family: var(--mono); font-size: 12px;
+            outline: none; transition: border-color 0.15s;
         }
-        .switch input { 
-            opacity: 0;
-            width: 0;
-            height: 0;
-        }
-        .slider {
-            position: absolute;
-            cursor: pointer;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background-color: #ccc;
-            transition: .4s;
-            border-radius: 22px;
-        }
-        .slider:before {
-            position: absolute;
-            content: "";
-            height: 16px;
-            width: 16px;
-            left: 3px;
-            bottom: 3px;
-            background-color: white;
-            transition: .4s;
-            border-radius: 50%;
-        }
-        input:checked + .slider {
-            background-color: #3B82F6;
-        }
-        input:checked + .slider:before {
-            transform: translateX(18px);
-        }
-        #signal-color-picker {
-            -webkit-appearance: none;
-            -moz-appearance: none;
-            appearance: none;
-            width: 38px;
-            height: 38px;
-            background-color: transparent;
-            border: none;
-            cursor: pointer;
-        }
-        #signal-color-picker::-webkit-color-swatch {
-            border-radius: 0.5rem;
-            border: 2px solid #e5e7eb;
-        }
-        #signal-color-picker::-moz-color-swatch {
-            border-radius: 0.5rem;
-            border: 2px solid #e5e7eb;
-        }
+        .modal input:focus, .modal select:focus, .modal textarea:focus { border-color: var(--accent); background: var(--accent-light); }
+        .modal select option { background: var(--surface); }
+        .modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px; }
+        .btn-cancel { padding: 7px 16px; background: var(--surface3); border: 1px solid var(--border2); border-radius: var(--radius); color: var(--text2); font-family: var(--font); font-size: 12px; cursor: pointer; transition: all 0.1s; }
+        .btn-cancel:hover { background: var(--border); }
+        .btn-primary { padding: 7px 16px; background: var(--accent); border: none; border-radius: var(--radius); color: #fff; font-family: var(--font); font-size: 12px; font-weight: 600; cursor: pointer; transition: background 0.15s; }
+        .btn-primary:hover { background: var(--accent-hover); }
+        .btn-primary:disabled { background: var(--border2); color: var(--text3); cursor: not-allowed; }
+        .btn-secondary { padding: 7px 16px; background: var(--surface); border: 1px solid var(--accent); border-radius: var(--radius); color: var(--accent); font-family: var(--font); font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.15s; }
+        .btn-secondary:hover { background: var(--accent-light); }
+
+        /* FSM entry */
+        .fsm-state-entry { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
+        .fsm-state-entry input:first-child { flex: 1; }
+        .fsm-state-entry input:last-child { width: 70px; }
+
+        /* Context menu */
+        .ctx-menu { position: fixed; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-lg); z-index: 500; padding: 4px; min-width: 170px; }
+        .ctx-menu.hidden { display: none; }
+        .ctx-item { padding: 6px 12px; border-radius: var(--radius); cursor: pointer; color: var(--text2); font-size: 12px; display: flex; align-items: center; gap: 7px; transition: background 0.1s; }
+        .ctx-item:hover { background: var(--accent-light); color: var(--accent); }
+        .ctx-item.danger { color: var(--red); }
+        .ctx-item.danger:hover { background: var(--red-bg); color: var(--red); }
+        .ctx-divider { height: 1px; background: var(--border); margin: 3px 0; }
+
+        /* Color picker */
+        #signal-color-picker { -webkit-appearance: none; appearance: none; width: 32px; height: 32px; background: transparent; border: none; cursor: pointer; }
+        #signal-color-picker::-webkit-color-swatch { border-radius: var(--radius); border: 1px solid var(--border2); }
+
+        /* Verilog */
+        .modal-tabs { display: flex; gap: 2px; margin-bottom: 12px; border-bottom: 1px solid var(--border); padding-bottom: 0; }
+        .modal-tab { padding: 6px 14px; border-radius: var(--radius) var(--radius) 0 0; font-size: 11px; cursor: pointer; color: var(--text3); background: transparent; border: 1px solid transparent; border-bottom: none; margin-bottom: -1px; transition: all 0.15s; }
+        .modal-tab:hover { color: var(--text); background: var(--surface3); }
+        .modal-tab.active { background: var(--surface); border-color: var(--border); color: var(--accent); font-weight: 600; }
+        .tab-panel { display: none; }
+        .tab-panel.active { display: block; }
+        .code-area { font-family: var(--mono); font-size: 11px; line-height: 1.5; background: #f8f8f8; border: 1px solid var(--border); border-radius: var(--radius); padding: 10px 12px; color: #333; white-space: pre; overflow: auto; max-height: 340px; }
+        .code-area .kw { color: #0000cc; }
+        .code-area .type { color: #008080; }
+        .code-area .comment { color: #888; font-style: italic; }
+        .code-area .num { color: #098658; }
+        .copy-btn { padding: 5px 12px; background: var(--surface3); border: 1px solid var(--border2); border-radius: var(--radius); color: var(--text2); font-size: 11px; font-family: var(--font); cursor: pointer; transition: all 0.1s; }
+        .copy-btn:hover { border-color: var(--accent); color: var(--accent); }
+        .copy-btn.copied { color: var(--green); border-color: var(--green); background: var(--green-bg); }
+        .module-opt { display: flex; align-items: flex-start; gap: 8px; padding: 8px; border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 6px; cursor: pointer; transition: background 0.1s; }
+        .module-opt:hover { background: var(--accent-light); }
+        .module-opt input { accent-color: var(--accent); margin-top: 2px; }
+        .module-opt-lbl { font-size: 12px; color: var(--text); }
+        .module-opt-desc { font-size: 10px; color: var(--text3); }
+        .stat-chip { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 4px; font-size: 10px; border: 1px solid; margin-right: 4px; font-family: var(--font); }
+        .stat-chip.info { color: var(--accent); border-color: var(--accent-light2); background: var(--accent-light); }
+        .stat-chip.ok { color: var(--green); border-color: #9ed89e; background: var(--green-bg); }
+        .stat-chip.warn { color: var(--amber); border-color: #f5d380; background: var(--amber-bg); }
+        .vg-row { display: flex; gap: 8px; }
+        .vg-row > * { flex: 1; }
     </style>
 </head>
-<body class="text-gray-800 flex flex-col">
+<body>
 
-    <!-- Header & Controls -->
-    <header class="bg-white p-2 border-b border-gray-200 shadow-lg z-20 flex items-center space-x-2 flex-wrap">
-        <div class="flex items-center gap-2 mr-4">
-            <div class="w-10 h-10 rounded-full flex items-center justify-center" style="background-color: #3B82F6;">
-                <svg width="32" height="32" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <circle cx="38" cy="50" r="18" fill="white"/>
-                    <circle cx="62" cy="50" r="18" fill="white"/>
-                    <text x="38" y="57" font-family="Inter, sans-serif" font-size="28" font-weight="bold" text-anchor="middle" fill="#3B82F6">S</text>
-                    <text x="62" y="57" font-family="Inter, sans-serif" font-size="28" font-weight="bold" text-anchor="middle" fill="#3B82F6">S</text>
-                </svg>
-            </div>
-            <h1 class="text-2xl font-bold" style="color: #3B82F6;">WAVECRAFT</h1>
+<!-- TITLEBAR -->
+<div class="titlebar">
+    <div class="logo-wrap">
+        <div class="logo-icon">SS</div>
+        <div>
+            <div class="logo-text">SS Wave Gen</div>
+            <div class="logo-sub">RTL Prototyping Environment</div>
         </div>
-        <button id="addSignalBtn" class="control-btn" title="Add Signal">
-            <i class="ph ph-plus-circle"></i>
-        </button>
-        <button id="addTimeStepBtn" class="control-btn" title="Add Timestep">
-            <i class="ph ph-timer"></i>
-        </button>
-        <button id="fitToScreenBtn" class="control-btn" title="Fit to Screen">
-            <i class="ph ph-arrows-out"></i>
-        </button>
-        <button id="selectCellsBtn" class="control-btn" title="Select Cells">
-            <i class="ph ph-selection-background"></i>
-        </button>
-        <button id="aiBtn" class="control-btn" title="AI Generate">
-            <i class="ph ph-sparkle"></i>
-        </button>
-        <button id="importCsvBtn" class="control-btn" title="Import CSV">
-            <i class="ph ph-file-arrow-up"></i>
-        </button>
-        <input type="file" id="csv-file-input" class="hidden" accept=".csv">
-        <button id="saveCsvBtn" class="control-btn" title="Save CSV">
-            <i class="ph ph-file-arrow-down"></i>
-        </button>
-        <button id="clearDataBtn" class="control-btn" title="Clear Data">
-            <i class="ph ph-trash"></i>
-        </button>
+    </div>
 
-        <div class="h-6 w-px bg-gray-300 mx-2"></div> <!-- Vertical Separator -->
-        
-        <button id="prevEdgeBtn" class="control-btn" title="Previous Edge">
-            <i class="ph ph-arrow-line-left"></i>
-        </button>
-        <button id="nextEdgeBtn" class="control-btn" title="Next Edge">
-            <i class="ph ph-arrow-line-right"></i>
-        </button>
-        
-        <div id="color-picker-container" class="hidden items-center" title="Change Signal Color">
-            <input type="color" id="signal-color-picker">
-        </div>
+    <button class="tbtn" id="addSignalBtn" title="Add Signal"><i class="ph ph-plus-circle"></i></button>
+    <button class="tbtn" id="addTimeStepBtn" title="Add Timestep"><i class="ph ph-timer"></i></button>
+    <button class="tbtn" id="zoomInBtn" title="Zoom In (Ctrl+Scroll)"><i class="ph ph-magnifying-glass-plus"></i></button>
+    <button class="tbtn" id="zoomOutBtn" title="Zoom Out (Ctrl+Scroll)"><i class="ph ph-magnifying-glass-minus"></i></button>
+    <button class="tbtn" id="fitToScreenBtn" title="Fit to Screen"><i class="ph ph-arrows-out"></i></button>
+    <button class="tbtn" id="selectCellsBtn" title="Select Cells"><i class="ph ph-selection-background"></i></button>
+    <div class="sep"></div>
+    <button class="tbtn" id="prevEdgeBtn" title="Prev Edge"><i class="ph ph-arrow-line-left"></i></button>
+    <button class="tbtn" id="nextEdgeBtn" title="Next Edge"><i class="ph ph-arrow-line-right"></i></button>
+    <div class="sep"></div>
+    <button class="tbtn" id="verilogBtn" title="Generate Verilog RTL" style="gap:5px;padding:0 10px;"><i class="ph ph-code"></i><span class="lbl">Generate RTL</span></button>
+    <div class="sep"></div>
+    <button class="tbtn" id="importCsvBtn" title="Import CSV"><i class="ph ph-file-arrow-up"></i></button>
+    <input type="file" id="csv-file-input" style="display:none" accept=".csv">
+    <button class="tbtn" id="saveCsvBtn" title="Export CSV"><i class="ph ph-file-arrow-down"></i></button>
+    <button class="tbtn" id="clearDataBtn" title="Clear All"><i class="ph ph-trash"></i></button>
+    <div id="color-picker-container" style="display:none; align-items:center;">
+        <input type="color" id="signal-color-picker" title="Signal Color">
+    </div>
+    <div class="sep"></div>
+    <div class="tog-wrap">
+        <span class="tog-lbl">POS</span>
+        <label class="switch"><input type="checkbox" id="pos-edge-toggle"><span class="slider"></span></label>
+    </div>
+    <div class="tog-wrap" style="margin-left:6px;">
+        <span class="tog-lbl">NEG</span>
+        <label class="switch"><input type="checkbox" id="neg-edge-toggle"><span class="slider"></span></label>
+    </div>
+    <div id="value-dropdown" class="val-strip" style="margin-left:6px;">
+        <span>Set:</span>
+        <button class="vbtn" data-value="1">1</button>
+        <button class="vbtn" data-value="0">0</button>
+        <button class="vbtn x" data-value="X">X</button>
+        <button class="vbtn z" data-value="Z">Z</button>
+    </div>
 
-        <div class="h-6 w-px bg-gray-300 mx-2"></div>
+    <div class="spacer"></div>
 
-        <div class="flex items-center space-x-2">
-            <label class="flex items-center cursor-pointer">
-                <span class="mr-2 text-sm font-medium text-gray-700">POS en</span>
-                <div class="switch">
-                    <input type="checkbox" id="pos-edge-toggle">
-                    <span class="slider"></span>
-                </div>
-            </label>
-        </div>
-         <div class="flex items-center space-x-2">
-            <label class="flex items-center cursor-pointer">
-                <span class="mr-2 text-sm font-medium text-gray-700">NEG en</span>
-                <div class="switch">
-                    <input type="checkbox" id="neg-edge-toggle">
-                    <span class="slider"></span>
-                </div>
-            </label>
-        </div>
+    <div class="readout-wrap">
+        <span class="readout-lbl">Cursor</span>
+        <input type="text" id="scan-field" class="readout" readonly>
+    </div>
+    <div class="readout-wrap" style="margin-left:8px;">
+        <span class="readout-lbl">Delta</span>
+        <input type="text" id="delta-field" class="readout" readonly>
+    </div>
+    <div class="sep"></div>
+    <button class="tbtn ai-toggle" id="aiToggleBtn"><i class="ph ph-sparkle"></i>&nbsp;AI Assist</button>
+</div>
 
-         <!-- Value Toolbar -->
-        <div id="value-dropdown" class="hidden flex items-center space-x-2 ml-4">
-            <span class="text-sm font-medium text-gray-500">Set Value:</span>
-            <div class="flex items-center bg-white border border-gray-300 rounded-lg p-1 space-x-1">
-                <button data-value="1" class="w-8 h-8 flex items-center justify-center font-mono font-bold text-lg rounded-md hover:bg-blue-100 transition-colors">1</button>
-                <button data-value="0" class="w-8 h-8 flex items-center justify-center font-mono font-bold text-lg rounded-md hover:bg-blue-100 transition-colors">0</button>
-                <button data-value="X" class="w-8 h-8 flex items-center justify-center font-mono font-bold text-lg text-red-500 rounded-md hover:bg-blue-100 transition-colors">X</button>
-                <button data-value="Z" class="w-8 h-8 flex items-center justify-center font-mono font-bold text-lg text-amber-500 rounded-md hover:bg-blue-100 transition-colors">Z</button>
-            </div>
-        </div>
-        <div class="flex-grow"></div> <!-- Spacer -->
-        <div class="flex items-center space-x-2">
-            <label for="scan-field" class="text-sm font-medium text-gray-500">Cursor Time:</label>
-            <input type="text" id="scan-field" readonly class="bg-gray-100 text-gray-800 text-center rounded-md py-1 px-2 w-24 border border-gray-300 focus:outline-none">
-        </div>
-         <div class="flex items-center space-x-2">
-            <label for="delta-field" class="text-sm font-medium text-gray-500">Delta:</label>
-            <input type="text" id="delta-field" readonly class="bg-gray-100 text-gray-800 text-center rounded-md py-1 px-2 w-24 border border-gray-300 focus:outline-none">
-        </div>
-    </header>
+<!-- APP BODY -->
+<div class="app-body">
 
-    <!-- Main Content: Canvas (Top) + Table (Bottom) -->
-    <div class="main-container">
-        
-        <!-- Top Panel: Labels and Canvas -->
+    <!-- MAIN WAVEFORM AREA -->
+    <div class="main-area">
         <div class="top-panel">
-            <div id="signal-labels" class="signal-labels">
-                <!-- Signal labels will be generated here -->
-            </div>
+            <div id="signal-labels" class="signal-labels"></div>
             <div id="canvas-wrapper" class="canvas-wrapper">
                 <canvas id="waveformCanvas"></canvas>
             </div>
         </div>
-
-        <!-- Resizer -->
-        <div id="resizer" class="h-2 bg-gray-300 hover:bg-indigo-500 cursor-row-resize transition-colors"></div>
-
-        <!-- Bottom: Data Table -->
+        <div id="resizer" class="panel-resizer"></div>
         <div id="table-wrapper" class="table-wrapper">
-            <table id="waveformTable" class="w-full">
-                <colgroup>
-                    <col id="col-signal-name">
-                    <col id="col-range">
-                </colgroup>
-                <thead id="table-header">
-                    <!-- Header generated by JS -->
-                </thead>
-                <tbody id="table-body">
-                    <!-- Body generated by JS -->
-                </tbody>
+            <table id="waveformTable" style="width:100%">
+                <colgroup><col id="col-signal-name"><col id="col-range"></colgroup>
+                <thead id="table-header"></thead>
+                <tbody id="table-body"></tbody>
             </table>
         </div>
-
-    </div>
-    
-    <!-- Custom Context Menu for Signal Name -->
-    <div id="context-menu" class="hidden absolute bg-white border border-gray-300 rounded-md shadow-lg p-2 text-sm z-50"></div>
-    
-    <!-- Signal Generation Context Menu -->
-    <div id="signal-context-menu" class="hidden absolute bg-white border border-gray-300 rounded-md shadow-lg z-50 text-sm py-1">
-        <div class="p-2 hover:bg-gray-100 cursor-pointer" id="generate-clock">Generate Clock...</div>
-        <div class="p-2 hover:bg-gray-100 cursor-pointer" id="generate-reset">Generate Reset...</div>
-        <div class="p-2 hover:bg-gray-100 cursor-pointer" id="generate-fsm">Generate FSM...</div>
-        <div class="my-1 border-t border-gray-200"></div>
-        <div class="p-2 hover:bg-gray-100 cursor-pointer" id="duplicate-signal">Duplicate Signal(s)</div>
-        <div class="p-2 hover:bg-gray-100 cursor-pointer text-red-600" id="delete-signal">Delete Signal(s)</div>
     </div>
 
-    <!-- Generator Modal -->
-    <div id="generator-modal-overlay" class="modal-overlay hidden">
-        <div class="modal">
-            <h3 id="generator-modal-title" class="modal-title">Generate Signal</h3>
-            <div id="generator-modal-content" class="modal-content">
-                <!-- Dynamic content goes here -->
+    <!-- AI ASSIST PANEL (right side) -->
+    <div class="ai-panel collapsed" id="aiPanel">
+        <div class="ai-panel-inner">
+            <div class="ai-panel-header">
+                <i class="ph ph-sparkle"></i>
+                <span>AI Assist</span>
+                <button class="ai-close-btn" id="aiCloseBtn" title="Hide panel"><i class="ph ph-x"></i></button>
             </div>
-            <div id="generator-modal-actions" class="modal-actions">
-                <button id="generator-cancel-btn" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-lg">Cancel</button>
-                <button id="generator-apply-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg">Generate</button>
+            <div class="ai-panel-body" id="aiPanelBody">
+
+                <!-- API Config -->
+                <div class="ai-field-group">
+                    <div class="section-title">API Configuration</div>
+                </div>
+                <div class="ai-field-group">
+                    <label class="ai-label">OpenAI API Key</label>
+                    <input type="password" class="ai-input" id="ai-api-key" placeholder="sk-...">
+                </div>
+                <div class="ai-field-group">
+                    <label class="ai-label">Model</label>
+                    <select class="ai-select" id="ai-model">
+                        <option value="gpt-4o">GPT-4o</option>
+                        <option value="gpt-4o-mini">GPT-4o Mini</option>
+                        <option value="gpt-4-turbo">GPT-4 Turbo</option>
+                        <option value="gpt-3.5-turbo" selected>GPT-3.5 Turbo</option>
+                        <option value="custom">Custom...</option>
+                    </select>
+                </div>
+                <div class="ai-field-group" id="custom-model-wrap" style="display:none;">
+                    <label class="ai-label">Custom Model Name</label>
+                    <input type="text" class="ai-input" id="ai-model-custom" placeholder="e.g. gpt-4-0125-preview">
+                </div>
+
+                <!-- Design -->
+                <div class="ai-field-group" style="margin-top:4px;">
+                    <div class="section-title">Waveform Setup</div>
+                </div>
+                <div class="ai-field-group">
+                    <label class="ai-label">Design Name</label>
+                    <input type="text" class="ai-input" id="ai-design-name" placeholder="e.g. AXI4-Lite Slave">
+                </div>
+
+                <!-- Signals -->
+                <div class="ai-field-group">
+                    <label class="ai-label">Signals</label>
+                    <div id="ai-signals-container"></div>
+                    <button class="add-row-btn" id="ai-add-signal-btn"><i class="ph ph-plus"></i> Add Signal</button>
+                </div>
+
+                <!-- Scenarios -->
+                <div class="ai-field-group">
+                    <label class="ai-label">Scenarios</label>
+                    <div id="ai-scenarios-container"></div>
+                    <button class="add-row-btn" id="ai-add-scenario-btn"><i class="ph ph-plus"></i> Add Scenario</button>
+                </div>
+
+                <!-- Total Timesteps -->
+                <div class="ai-field-group">
+                    <label class="ai-label">Total Timesteps</label>
+                    <input type="number" class="ai-input" id="ai-total-timesteps" placeholder="e.g. 40" min="1" value="40" style="font-family:var(--mono);">
+                    <div style="font-size:10px;color:var(--text3);margin-top:3px;">Total number of timesteps to generate. Each scenario gets an equal share.</div>
+                </div>
+
+                <div id="ai-status" class="ai-status info" style="display:none;"></div>
+
+                <button class="ai-run-btn" id="ai-run-btn">
+                    <i class="ph ph-play"></i> Run Generation
+                </button>
+
             </div>
         </div>
     </div>
+</div>
 
-    <!-- AI Modal -->
-    <div id="ai-modal-overlay" class="modal-overlay hidden">
-        <div class="modal" style="max-width: 500px;">
-            <h3 class="modal-title">Generate Waveform with AI</h3>
-            <div class="modal-content">
-                <label for="api-key-input">OpenAI API Key:</label>
-                <input type="password" id="api-key-input" placeholder="Enter your OpenAI API key">
+<!-- CONTEXT MENUS -->
+<div id="context-menu" class="ctx-menu hidden"></div>
+<div id="signal-context-menu" class="ctx-menu hidden">
+    <div class="ctx-item" id="generate-clock"><i class="ph ph-waves"></i>Generate Clock...</div>
+    <div class="ctx-item" id="generate-reset"><i class="ph ph-arrow-counter-clockwise"></i>Generate Reset...</div>
+    <div class="ctx-item" id="generate-fsm"><i class="ph ph-graph"></i>Generate FSM...</div>
+    <div class="ctx-divider"></div>
+    <div class="ctx-item" id="duplicate-signal"><i class="ph ph-copy"></i>Duplicate Signal(s)</div>
+    <div class="ctx-item danger" id="delete-signal"><i class="ph ph-trash"></i>Delete Signal(s)</div>
+</div>
 
-                <label for="ai-design-name">Design Name:</label>
-                <input type="text" id="ai-design-name" placeholder="e.g., 4-bit Counter">
-
-                <div class="flex justify-between items-center mb-2">
-                    <label>Signals:</label>
-                    <button id="ai-add-signal-btn" class="ai-add-btn" title="Add Signal Field">
-                        <i class="ph ph-plus"></i>
-                    </button>
-                </div>
-                <div id="ai-signals-container">
-                    <!-- Signal rows will be added here by JS -->
-                </div>
-
-                <div class="flex justify-between items-center mb-2 mt-4">
-                    <label>Scenarios:</label>
-                     <button id="ai-add-scenario-btn" class="ai-add-btn" title="Add Scenario Field">
-                        <i class="ph ph-plus"></i>
-                    </button>
-                </div>
-                <div id="ai-scenarios-container">
-                    <!-- Scenario textareas will be added here by JS -->
-                </div>
-                
-                <label for="ai-response-field" class="mt-4">AI Response:</label>
-                <textarea id="ai-response-field" rows="6" readonly class="bg-gray-100 cursor-not-allowed w-full p-2 border border-gray-300 rounded-md font-mono text-xs" placeholder="The raw CSV response from the AI will appear here..."></textarea>
-                <div id="ai-status" class="text-sm text-gray-500 h-4 mt-2"></div>
-            </div>
-            <div class="modal-actions">
-                <button id="ai-cancel-btn" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-lg">Cancel</button>
-                <button id="ai-apply-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg">Generate</button>
-            </div>
+<!-- GENERATOR MODAL -->
+<div id="generator-modal-overlay" class="modal-overlay hidden">
+    <div class="modal">
+        <div class="modal-title"><i class="ph ph-gear"></i><span id="generator-modal-title">Generate Signal</span></div>
+        <div id="generator-modal-content"></div>
+        <div class="modal-actions">
+            <button id="generator-cancel-btn" class="btn-cancel">Cancel</button>
+            <button id="generator-apply-btn" class="btn-primary">Generate</button>
         </div>
     </div>
-
-
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            const canvas = document.getElementById('waveformCanvas');
-            const ctx = canvas.getContext('2d');
-            const tableHeader = document.getElementById('table-header');
-            const tableBody = document.getElementById('table-body');
-            const addSignalBtn = document.getElementById('addSignalBtn');
-            const addTimeStepBtn = document.getElementById('addTimeStepBtn');
-            const canvasWrapper = document.getElementById('canvas-wrapper');
-            const tableWrapper = document.getElementById('table-wrapper');
-            const signalLabels = document.getElementById('signal-labels');
-            const mainContainer = document.querySelector('.main-container');
-            const topPanel = document.querySelector('.top-panel');
-            const resizer = document.getElementById('resizer');
-            const contextMenu = document.getElementById('context-menu');
-            const fitToScreenBtn = document.getElementById('fitToScreenBtn');
-            const selectCellsBtn = document.getElementById('selectCellsBtn');
-            const valueDropdown = document.getElementById('value-dropdown');
-            const scanField = document.getElementById('scan-field');
-            const deltaField = document.getElementById('delta-field');
-            const saveCsvBtn = document.getElementById('saveCsvBtn');
-            const importCsvBtn = document.getElementById('importCsvBtn');
-            const csvFileInput = document.getElementById('csv-file-input');
-            const clearDataBtn = document.getElementById('clearDataBtn');
-            const aiBtn = document.getElementById('aiBtn');
-            const prevEdgeBtn = document.getElementById('prevEdgeBtn');
-            const nextEdgeBtn = document.getElementById('nextEdgeBtn');
-            const posEdgeToggle = document.getElementById('pos-edge-toggle');
-            const negEdgeToggle = document.getElementById('neg-edge-toggle');
-            const colorPickerContainer = document.getElementById('color-picker-container');
-            const colorPicker = document.getElementById('signal-color-picker');
-
-
-            // Signal Gen elements
-            const signalContextMenu = document.getElementById('signal-context-menu');
-            const generatorModalOverlay = document.getElementById('generator-modal-overlay');
-            const generatorModalTitle = document.getElementById('generator-modal-title');
-            const generatorModalContent = document.getElementById('generator-modal-content');
-            const generatorApplyBtn = document.getElementById('generator-apply-btn');
-            const generatorCancelBtn = document.getElementById('generator-cancel-btn');
-
-            // AI Modal elements
-            const aiModalOverlay = document.getElementById('ai-modal-overlay');
-            const aiCancelBtn = document.getElementById('ai-cancel-btn');
-            const aiApplyBtn = document.getElementById('ai-apply-btn');
-            const aiStatus = document.getElementById('ai-status');
-
-            let signalLabelsBody = null;
-
-            // --- Configuration ---
-            const ROW_HEIGHT = 50;
-            let TIMESTEP_WIDTH = 60; // Changed to let for zooming
-            const TOP_MARGIN = 25;
-            const COLORS = {
-                background: '#ffffff', grid: '#e5e7eb', line: '#3b82f6',
-                text: '#6b7280', unknown: '#ef4444', highZ: '#f59e0b', bus: '#10b981',
-            };
-            const FONT = '12px Inter';
-
-            let signals = [];
-            let timeStepCount = 0;
-            let signalNameColWidth = 120;
-            let rangeColWidth = 80;
-            
-            // --- Selection State ---
-            let isSelectionMode = false;
-            let selectedCells = new Set();
-            let isDragging = false;
-            let startCell = null;
-            let endCell = null;
-            
-            // --- Marker State ---
-            let markerTime = null;
-            let marker2Time = null;
-
-            // --- Generator State ---
-            let activeSignalIndexForGeneration = null;
-            
-            // --- Row Selection State ---
-            let selectedSignalIndex = null;
-            let selectedTableRows = new Set();
-
-            // --- Edge Marker State ---
-            let posEdgeEnabled = false;
-            let negEdgeEnabled = false;
-
-            // --- Edit State ---
-            let valueOnFocus = '';
-            
-            // --- Zoom State ---
-            let isZoomDragging = false;
-            let zoomStartX = 0;
-
-
-            const createSignal = (name, range, values) => ({ 
-                name, 
-                range, 
-                values, 
-                id: Math.random().toString(36).substr(2, 9),
-                isExpanded: false,
-                isBusMember: false,
-                busParentName: null,
-                color: '#3B82F6' // Default color
-            });
-
-            const render = () => {
-                renderCanvas();
-                renderTable();
-                renderSignalLabels();
-                updateTableRowSelectionVisuals();
-            };
-
-            const renderCanvas = () => {
-                const canvasWidth = timeStepCount * TIMESTEP_WIDTH;
-                const canvasHeight = signals.length * ROW_HEIGHT + TOP_MARGIN;
-                canvas.width = canvasWidth > canvasWrapper.clientWidth ? canvasWidth : canvasWrapper.clientWidth;
-                canvas.height = canvasHeight;
-
-                ctx.fillStyle = COLORS.background;
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-                // --- Draw selected row highlight ---
-                if (selectedSignalIndex !== null) {
-                    ctx.fillStyle = '#f3f4f6'; // gray-100, a light gray
-                    const y = selectedSignalIndex * ROW_HEIGHT + TOP_MARGIN;
-                    ctx.fillRect(0, y, canvas.width, ROW_HEIGHT);
-                }
-
-                ctx.strokeStyle = COLORS.grid;
-                ctx.lineWidth = 1;
-                ctx.font = FONT;
-
-                for (let i = 0; i <= timeStepCount; i++) {
-                    const x = i * TIMESTEP_WIDTH;
-                    ctx.beginPath();
-                    ctx.moveTo(x, 0);
-                    ctx.lineTo(x, canvas.height);
-                    ctx.stroke();
-                    if (i < timeStepCount) {
-                         ctx.fillStyle = COLORS.text;
-                         ctx.textAlign = 'center';
-                         ctx.fillText(i.toString(), x + TIMESTEP_WIDTH / 2, 15);
-                    }
-                }
-
-                for (let i = 0; i <= signals.length; i++) {
-                    const y = i * ROW_HEIGHT + TOP_MARGIN;
-                    ctx.beginPath();
-                    ctx.moveTo(0, y);
-                    ctx.lineTo(canvas.width, y);
-                    ctx.stroke();
-                }
-
-                signals.forEach((signal, index) => {
-                    const y = index * ROW_HEIGHT + TOP_MARGIN;
-                    drawWave(signal, y, index);
-                });
-
-                // --- Draw Markers ---
-                if (markerTime !== null) {
-                    const markerX = markerTime * TIMESTEP_WIDTH;
-                    ctx.strokeStyle = '#f59e0b'; // Amber-500
-                    ctx.lineWidth = 1.5;
-                    ctx.beginPath();
-                    ctx.moveTo(markerX, 0);
-                    ctx.lineTo(markerX, canvas.height);
-                    ctx.stroke();
-                }
-                 if (marker2Time !== null) {
-                    const markerX = marker2Time * TIMESTEP_WIDTH;
-                    ctx.strokeStyle = '#22c55e'; // Green-500
-                    ctx.lineWidth = 1.5;
-                    ctx.beginPath();
-                    ctx.moveTo(markerX, 0);
-                    ctx.lineTo(markerX, canvas.height);
-                    ctx.stroke();
-                }
-            };
-            
-            const renderSignalLabels = () => {
-                signalLabels.style.width = `${signalNameColWidth + rangeColWidth + 5}px`;
-                signalLabels.innerHTML = '';
-
-                const header = document.createElement('div');
-                header.className = 'signal-label-header';
-                header.innerHTML = `
-                    <div class="signal-name-col" style="width: ${signalNameColWidth}px; min-width: ${signalNameColWidth}px;">Signal Name</div>
-                    <div class="col-resizer" data-resize-col="name"></div>
-                    <div class="range-col text-center" style="width: ${rangeColWidth}px; min-width: ${rangeColWidth}px;">Range</div>
-                `;
-                signalLabels.appendChild(header);
-
-                const body = document.createElement('div');
-                body.className = 'signal-labels-body';
-                signalLabels.appendChild(body);
-                signalLabelsBody = body;
-
-                signals.forEach((signal, index) => {
-                    const labelRow = document.createElement('div');
-                    labelRow.className = 'signal-label-row';
-                    if (index === selectedSignalIndex) {
-                        labelRow.classList.add('selected-row');
-                    }
-
-                    let namePrefix = '';
-                    const rangeMatch = signal.range.match(/\[(\d+):(\d+)\]/);
-                    if (rangeMatch && parseInt(rangeMatch[1], 10) > parseInt(rangeMatch[2], 10)) {
-                        namePrefix = signal.isExpanded ? '[-] ' : '[+] ';
-                    }
-
-                    let indentation = signal.isBusMember ? 'padding-left: 20px;' : '';
-                    
-                    labelRow.innerHTML = `
-                        <div class="signal-name-col" style="width: ${signalNameColWidth}px; min-width: ${signalNameColWidth}px; ${indentation}" title="${signal.name}"><span class="font-mono">${namePrefix}</span>${signal.name}</div>
-                        <div class="range-col text-center" style="width: ${rangeColWidth}px; min-width: ${rangeColWidth}px;">${signal.range}</div>
-                    `;
-                    body.appendChild(labelRow);
-                });
-            };
-
-            const renderTable = () => {
-                document.getElementById('col-signal-name').style.width = `${signalNameColWidth}px`;
-                document.getElementById('col-range').style.width = `${rangeColWidth}px`;
-                tableHeader.innerHTML = '';
-                tableBody.innerHTML = '';
-                
-                const headerRow = document.createElement('tr');
-                headerRow.innerHTML = `
-                    <th class="sticky left-0 z-10" style="width: ${signalNameColWidth}px; min-width: ${signalNameColWidth}px;">Signal Name</th>
-                    <th style="width: ${rangeColWidth}px; min-width: ${rangeColWidth}px;">Range</th>
-                `;
-                for(let i=0; i < timeStepCount; i++) {
-                    headerRow.innerHTML += `<th>${i}</th>`;
-                }
-                tableHeader.appendChild(headerRow);
-
-                const tableRowsHTML = signals.map((signal, signalIndex) => {
-                    let namePrefix = '';
-                    const rangeMatch = signal.range.match(/\[(\d+):(\d+)\]/);
-                    if (rangeMatch && parseInt(rangeMatch[1], 10) > parseInt(rangeMatch[2], 10) && !signal.isBusMember) {
-                        namePrefix = signal.isExpanded ? '[-] ' : '[+] ';
-                    }
-                    const indentation = signal.isBusMember ? 'padding-left: 1.5rem;' : '';
-
-                    const nameCellHTML = `<td class="sticky left-0 z-0 text-left" style="width: ${signalNameColWidth}px; min-width: ${signalNameColWidth}px; ${indentation}"><span class="font-mono">${namePrefix}</span><input type="text" value="${signal.name}" data-signal-index="${signalIndex}" data-type="name" class="signal-input w-auto" ${signal.isBusMember ? 'readonly' : ''}></td>`;
-                    const rangeCellHTML = `<td style="width: ${rangeColWidth}px; min-width: ${rangeColWidth}px;"><input type="text" value="${signal.range}" data-signal-index="${signalIndex}" data-type="range" class="signal-input text-center" ${signal.isBusMember ? 'readonly' : ''}></td>`;
-                    
-                    const valuesHTML = signal.values.map((val, timeIndex) => {
-                        const isError = !isValidValue(signal, val) ? 'cell-error' : '';
-                        return `<td class="value-cell ${isError}" contenteditable="${!isSelectionMode && !signal.isBusMember}" data-signal-index="${signalIndex}" data-time-index="${timeIndex}">${val}</td>`;
-                    }).join('');
-
-                    return `<tr>${nameCellHTML}${rangeCellHTML}${valuesHTML}</tr>`;
-                }).join('');
-                
-                tableBody.innerHTML = tableRowsHTML;
-            };
-
-            const parseValue = (valStr) => {
-                if (typeof valStr !== 'string') return { value: String(valStr), delay: 0 };
-                const match = valStr.match(/^(.*)\((\d*\.?\d+)\)$/);
-                if (match && match[1] !== '' && !isNaN(parseFloat(match[2]))) {
-                    let delay = parseFloat(match[2]);
-                    delay = Math.max(0, Math.min(0.99, delay)); // Clamp delay
-                    return { value: match[1].trim(), delay: delay };
-                }
-                return { value: valStr, delay: 0 };
-            };
-
-            const isValidValue = (signal, rawValue) => {
-                const { value } = parseValue(rawValue);
-                const upperValue = value.toUpperCase();
-
-                if (['X', 'Z'].includes(upperValue)) return true;
-                
-                const rangeMatch = signal.range.match(/\[(\d+):(\d+)\]/);
-
-                if (rangeMatch && !signal.isBusMember) { // It's a bus
-                    const high = parseInt(rangeMatch[1], 10);
-                    const low = parseInt(rangeMatch[2], 10);
-                    const width = Math.abs(high - low) + 1;
-                    const maxValue = (2 ** width) - 1;
-
-                    let numericValue;
-                    if (value.toLowerCase().startsWith('0x')) {
-                        numericValue = parseInt(value, 16);
-                    } else {
-                        numericValue = parseInt(value, 10);
-                    }
-                    if (isNaN(numericValue)) return true; // Assume FSM state name is valid
-                    return numericValue <= maxValue;
-
-                } else { // It's a single bit signal
-                    return ['0', '1'].includes(upperValue);
-                }
-            };
-
-            const drawArrow = (ctx, x, y, up) => {
-                const size = 8; // Increased size for visibility
-                ctx.beginPath();
-                ctx.fillStyle = '#10B981'; // green-500
-                if (up) {
-                    // Draw arrow pointing up, centered on the edge
-                    const yPos = y + size / 2;
-                    ctx.moveTo(x, yPos - size);
-                    ctx.lineTo(x - size / 2, yPos);
-                    ctx.lineTo(x + size / 2, yPos);
-                } else { // down
-                    // Draw arrow pointing down, centered on the edge
-                    const yPos = y - size / 2;
-                    ctx.moveTo(x, yPos + size);
-                    ctx.lineTo(x - size / 2, yPos);
-                    ctx.lineTo(x + size / 2, yPos);
-                }
-                ctx.closePath();
-                ctx.fill();
-            };
-
-            const drawWave = (signal, y, signalIndex) => {
-                const yHigh = y + (ROW_HEIGHT * 0.2);
-                const yLow = y + (ROW_HEIGHT * 0.8);
-                const yMid = y + (ROW_HEIGHT * 0.5);
-                const yLevel = (val) => val === '1' ? yHigh : (val === '0' ? yLow : yMid);
-
-                if (signal.range.trim() !== '' && signal.range.includes(':') && !signal.isBusMember) {
-                    drawBusWave(signal, y);
-                    return;
-                }
-
-                const points = [];
-                if (timeStepCount > 0) {
-                    let initialParse = parseValue(signal.values[0]);
-                    points.push({ t: initialParse.delay, val: initialParse.value });
-
-                    for (let i = 1; i < timeStepCount; i++) {
-                        let prevParse = parseValue(signal.values[i-1]);
-                        let currParse = parseValue(signal.values[i]);
-                        if (currParse.value !== prevParse.value) {
-                            points.push({ t: i + currParse.delay, val: currParse.value });
-                        }
-                    }
-                    points.push({ t: timeStepCount, val: parseValue(signal.values[timeStepCount - 1]).value });
-                }
-
-                for (let i = 0; i < points.length - 1; i++) {
-                    const startPoint = points[i];
-                    const endPoint = points[i+1];
-                    const startVal = startPoint.val.toUpperCase();
-                    
-                    const xStart = startPoint.t * TIMESTEP_WIDTH;
-                    const xEnd = endPoint.t * TIMESTEP_WIDTH;
-                    
-                    ctx.strokeStyle = signal.color || COLORS.line;
-                    ctx.lineWidth = 2;
-                    
-                    if (startVal === '1' || startVal === '0') {
-                        const y = yLevel(startVal);
-                        ctx.beginPath();
-                        ctx.moveTo(xStart, y);
-                        ctx.lineTo(xEnd, y);
-                        ctx.stroke();
-                    } else if (startVal === 'X') {
-                        ctx.fillStyle = COLORS.unknown;
-                        ctx.fillRect(xStart, yHigh, xEnd - xStart, yLow - yHigh);
-                    } else if (startVal === 'Z') {
-                        ctx.strokeStyle = COLORS.highZ;
-                        ctx.beginPath();
-                        ctx.moveTo(xStart, yMid);
-                        ctx.lineTo(xEnd, yMid);
-                        ctx.stroke();
-                    }
-                    
-                    const endVal = endPoint.val.toUpperCase();
-                    if (startVal !== endVal) {
-                        const y1 = yLevel(startVal);
-                        const y2 = yLevel(endVal);
-                        ctx.strokeStyle = signal.color || COLORS.line;
-                        ctx.beginPath();
-                        ctx.moveTo(xEnd, y1);
-                        ctx.lineTo(xEnd, y2);
-                        ctx.stroke();
-                        
-                        // Draw edge arrows if enabled for the selected signal
-                        if (signalIndex === selectedSignalIndex) {
-                            if (posEdgeEnabled && startVal === '0' && endVal === '1') {
-                                drawArrow(ctx, xEnd, yHigh, true);
-                            }
-                            if (negEdgeEnabled && startVal === '1' && endVal === '0') {
-                                drawArrow(ctx, xEnd, yLow, false);
-                            }
-                        }
-                    }
-                }
-            };
-
-            const drawBusWave = (signal, y) => {
-                const yTop = y + (ROW_HEIGHT * 0.25);
-                const yBottom = y + (ROW_HEIGHT * 0.75);
-                const yMid = y + (ROW_HEIGHT * 0.5);
-
-                const points = [];
-                 if (timeStepCount > 0) {
-                    let initialParse = parseValue(signal.values[0]);
-                    points.push({ t: initialParse.delay, val: initialParse.value });
-
-                    for (let i = 1; i < timeStepCount; i++) {
-                        let prevParse = parseValue(signal.values[i-1]);
-                        let currParse = parseValue(signal.values[i]);
-                        if (currParse.value !== prevParse.value) {
-                            points.push({ t: i + currParse.delay, val: currParse.value });
-                        }
-                    }
-                    points.push({ t: timeStepCount, val: parseValue(signal.values[timeStepCount - 1]).value });
-                }
-
-                for (let i = 0; i < points.length - 1; i++) {
-                     const startPoint = points[i];
-                    const endPoint = points[i+1];
-                    const startVal = startPoint.val.toUpperCase();
-                    
-                    const xStart = startPoint.t * TIMESTEP_WIDTH;
-                    const xEnd = endPoint.t * TIMESTEP_WIDTH;
-
-                    switch(startVal) {
-                        case 'X':
-                            ctx.fillStyle = COLORS.unknown;
-                            ctx.fillRect(xStart, yTop, xEnd - xStart, yBottom - yTop);
-                            break;
-                        case 'Z':
-                            ctx.strokeStyle = COLORS.highZ;
-                            ctx.lineWidth = 2;
-                            ctx.beginPath();
-                            ctx.moveTo(xStart, yMid);
-                            ctx.lineTo(xEnd, yMid);
-                            ctx.stroke();
-                            break;
-                        default:
-                            ctx.strokeStyle = signal.color || COLORS.bus;
-                            ctx.lineWidth = 2;
-                            ctx.beginPath();
-                            ctx.moveTo(xStart, yTop); ctx.lineTo(xEnd, yTop);
-                            ctx.moveTo(xStart, yBottom); ctx.lineTo(xEnd, yBottom);
-                            ctx.stroke();
-
-                            ctx.fillStyle = COLORS.text;
-                            ctx.textAlign = 'center';
-                             if ((startVal || '').trim() !== '') {
-                                const runWidth = xEnd - xStart;
-                                if (ctx.measureText(startVal).width < runWidth - 10) {
-                                    ctx.fillText(startVal, xStart + runWidth / 2, yMid + 5);
-                                }
-                            }
-                            break;
-                    }
-                    
-                    const endVal = endPoint.val.toUpperCase();
-                    if (startVal !== endVal) {
-                        ctx.strokeStyle = signal.color || COLORS.bus;
-                        ctx.lineWidth = 2;
-                        ctx.beginPath();
-                        ctx.moveTo(xEnd + 2, yTop - 2); ctx.lineTo(xEnd - 2, yBottom + 2);
-                        ctx.moveTo(xEnd - 2, yTop - 2); ctx.lineTo(xEnd + 2, yBottom + 2);
-                        ctx.stroke();
-                    }
-                }
-            };
-            
-            addSignalBtn.addEventListener('click', () => {
-                signals.push(createSignal('new_signal', '', Array(timeStepCount).fill('0')));
-                render();
-            });
-
-            addTimeStepBtn.addEventListener('click', () => {
-                signals.forEach(s => s.values.push(s.values[s.values.length-1] || '0'));
-                timeStepCount++;
-                render();
-            });
-            
-            tableBody.addEventListener('focusin', (e) => {
-                if (e.target.classList.contains('value-cell')) {
-                    valueOnFocus = e.target.textContent;
-                }
-            });
-
-            tableBody.addEventListener('input', (e) => {
-                if (isSelectionMode) return;
-                const target = e.target;
-                const signalIndex = target.dataset.signalIndex;
-                if (signalIndex === undefined) return;
-                
-                if (target.dataset.type === 'name') {
-                    signals[signalIndex].name = target.value;
-                    renderSignalLabels();
-                } else if (target.dataset.type === 'range') {
-                    signals[signalIndex].range = target.value;
-                } else if (target.dataset.timeIndex !== undefined) {
-                    signals[signalIndex].values[target.dataset.timeIndex] = target.textContent;
-                    renderCanvas();
-                }
-            });
-            
-            tableBody.addEventListener('focusout', (e) => {
-                 if (isSelectionMode) return;
-                const target = e.target;
-                const signalIndex = parseInt(target.dataset.signalIndex, 10);
-                if (isNaN(signalIndex)) return;
-
-                const timeIndex = parseInt(target.dataset.timeIndex, 10);
-
-                if (target.classList.contains('value-cell') && !isNaN(timeIndex)) {
-                    // It's a value cell that lost focus, handle delay propagation
-                    const newRawValue = target.textContent;
-                    const oldParsed = parseValue(valueOnFocus);
-                    const newParsed = parseValue(newRawValue);
-                    const delayDifference = newParsed.delay - oldParsed.delay;
-
-                    if (Math.abs(delayDifference) > 0.001) {
-                        for (let i = timeIndex + 1; i < timeStepCount; i++) {
-                            const subsequentRawValue = signals[signalIndex].values[i];
-                            const subsequentParsed = parseValue(subsequentRawValue);
-                            let combinedDelay = subsequentParsed.delay + delayDifference;
-                            combinedDelay = Math.max(0, Math.min(0.99, combinedDelay));
-                            let finalValue;
-                            if (combinedDelay > 0.001) {
-                                const delayString = parseFloat(combinedDelay.toFixed(2)).toString();
-                                finalValue = `${subsequentParsed.value}(${delayString})`;
-                            } else {
-                                finalValue = subsequentParsed.value;
-                            }
-                            signals[signalIndex].values[i] = finalValue;
-                        }
-                    }
-                }
-                
-                // Always do a full render on focusout to validate everything
-                render();
-            });
-
-            let isSyncing = false;
-            const syncScroll = (scroller) => {
-                if (isSyncing) return;
-                isSyncing = true;
-                const { scrollTop, scrollLeft } = scroller;
-                [canvasWrapper, tableWrapper, signalLabelsBody].forEach(el => {
-                    if (el && el !== scroller) {
-                        el.scrollTop = scrollTop;
-                        if (el !== signalLabelsBody) el.scrollLeft = scrollLeft;
-                    }
-                });
-                requestAnimationFrame(() => { isSyncing = false; });
-            };
-
-            canvasWrapper.addEventListener('scroll', () => syncScroll(canvasWrapper));
-            tableWrapper.addEventListener('scroll', () => syncScroll(tableWrapper));
-            signalLabels.addEventListener('scroll', (e) => {
-                if (e.target === signalLabelsBody) syncScroll(signalLabelsBody);
-            }, true);
-
-            const addResizerLogic = () => {
-                let isResizing = false;
-                resizer.addEventListener('mousedown', () => { isResizing = true; document.body.style.userSelect = 'none'; document.body.style.cursor = 'row-resize'; });
-                const onMouseMove = (moveEvent) => {
-                    if (!isResizing) return;
-                    const mainRect = mainContainer.getBoundingClientRect();
-                    let newTopHeight = moveEvent.clientY - mainRect.top;
-                    const minHeight = 40, snapThreshold = 20;
-                    if (newTopHeight < snapThreshold) newTopHeight = 0;
-                    else if (mainRect.height - newTopHeight < snapThreshold) newTopHeight = mainRect.height - resizer.offsetHeight;
-                    else {
-                        if (newTopHeight < minHeight) newTopHeight = minHeight;
-                        if (mainRect.height - newTopHeight < minHeight + resizer.offsetHeight) newTopHeight = mainRect.height - minHeight - resizer.offsetHeight;
-                    }
-                    topPanel.style.height = `${newTopHeight}px`;
-                };
-                const onMouseUp = () => { isResizing = false; document.body.style.userSelect = ''; document.body.style.cursor = ''; };
-                document.addEventListener('mousemove', onMouseMove);
-                document.addEventListener('mouseup', onMouseUp);
-            };
-            
-            const addColumnResizerLogic = () => {
-                let isResizing = false;
-                let startX, startWidth, startRangeWidth;
-
-                signalLabels.addEventListener('mousedown', (e) => {
-                    if (!e.target.classList.contains('col-resizer')) return;
-                    isResizing = true;
-                    startX = e.clientX;
-                    startWidth = signalNameColWidth;
-                    startRangeWidth = rangeColWidth;
-                    document.body.style.cursor = 'col-resize';
-                    document.body.style.userSelect = 'none';
-
-                    const onMouseMove = (moveEvent) => {
-                        if (!isResizing) return;
-                        const dx = moveEvent.clientX - startX;
-                        const newNameWidth = startWidth + dx;
-                        const newRangeWidth = startRangeWidth - dx;
-
-                        if (newNameWidth > 60 && newRangeWidth > 40) {
-                            signalNameColWidth = newNameWidth;
-                            rangeColWidth = newRangeWidth;
-                            renderSignalLabels();
-                            renderTable();
-                        }
-                    };
-
-                    const onMouseUp = () => {
-                        isResizing = false;
-                        document.body.style.cursor = '';
-                        document.body.style.userSelect = '';
-                        document.removeEventListener('mousemove', onMouseMove);
-                        document.removeEventListener('mouseup', onMouseUp);
-                    };
-
-                    document.addEventListener('mousemove', onMouseMove);
-                    document.addEventListener('mouseup', onMouseUp);
-                });
-            };
-
-            const addContextMenuLogic = () => {
-                signalLabels.addEventListener('contextmenu', (e) => {
-                    const signalNameCol = e.target.closest('.signal-name-col');
-                    if (signalNameCol) {
-                        e.preventDefault();
-                        const fullName = signalNameCol.getAttribute('title');
-                        if (fullName) {
-                            contextMenu.textContent = fullName;
-                            contextMenu.style.top = `${e.clientY}px`;
-                            contextMenu.style.left = `${e.clientX}px`;
-                            contextMenu.classList.remove('hidden');
-                        }
-                    }
-                });
-
-                window.addEventListener('click', () => {
-                    contextMenu.classList.add('hidden');
-                    signalContextMenu.classList.add('hidden');
-                });
-
-                window.addEventListener('contextmenu', (e) => {
-                    if (!e.target.closest('.signal-name-col')) {
-                        contextMenu.classList.add('hidden');
-                    }
-                     if (!e.target.closest('td:first-child')) {
-                        signalContextMenu.classList.add('hidden');
-                    }
-                }, true);
-            };
-
-            const addZoomLogic = () => {
-                canvasWrapper.addEventListener('wheel', (e) => {
-                    if (e.ctrlKey) {
-                        e.preventDefault();
-                        const scrollLeft = canvasWrapper.scrollLeft;
-                        const oldCanvasWidth = timeStepCount * TIMESTEP_WIDTH;
-                        const pointerX = scrollLeft + e.clientX - canvasWrapper.getBoundingClientRect().left;
-                        const ratio = oldCanvasWidth > 0 ? pointerX / oldCanvasWidth : 0;
-                        const zoomIntensity = 0.1;
-                        const delta = e.deltaY > 0 ? (1 - zoomIntensity) : (1 + zoomIntensity);
-                        const newTimestepWidth = TIMESTEP_WIDTH * delta;
-
-                        if (newTimestepWidth > 10 && newTimestepWidth < 300) {
-                            TIMESTEP_WIDTH = newTimestepWidth;
-                            render();
-                            const newCanvasWidth = timeStepCount * TIMESTEP_WIDTH;
-                            const newScrollLeft = (ratio * newCanvasWidth) - (e.clientX - canvasWrapper.getBoundingClientRect().left);
-                            canvasWrapper.scrollLeft = newScrollLeft;
-                        }
-                    }
-                }, { passive: false });
-
-                let zoomStartX = 0;
-                let isZoomDragging = false;
-                
-                canvasWrapper.addEventListener('mousedown', (e) => {
-                    if (e.buttons === 1 && !isSelectionMode) { // Left click only, not in cell selection mode
-                         isZoomDragging = true;
-                         zoomStartX = e.offsetX;
-                         canvasWrapper.style.cursor = 'ew-resize';
-                    }
-                });
-                 canvasWrapper.addEventListener('mousemove', (e) => {
-                    if (isZoomDragging) {
-                        renderCanvas(); // Redraw base waveform
-                        const currentX = e.offsetX;
-                        ctx.fillStyle = 'rgba(59, 130, 246, 0.2)'; // semi-transparent blue
-                        ctx.strokeStyle = 'rgba(59, 130, 246, 0.8)';
-                        ctx.lineWidth = 1;
-                        const rectX = Math.min(zoomStartX, currentX);
-                        const rectWidth = Math.abs(zoomStartX - currentX);
-                        ctx.fillRect(rectX, 0, rectWidth, canvas.height);
-                        ctx.strokeRect(rectX, 0, rectWidth, canvas.height);
-                    }
-                });
-                 window.addEventListener('mouseup', (e) => {
-                    if (isZoomDragging) {
-                        isZoomDragging = false;
-                        canvasWrapper.style.cursor = 'default';
-                        const zoomEndX = e.offsetX;
-                        const dragWidth = Math.abs(zoomEndX - zoomStartX);
-
-                        if (dragWidth < 10) { // If drag is too small, treat it as a click and ignore zoom
-                            renderCanvas();
-                            return; 
-                        }
-
-                        const currentScrollLeft = canvasWrapper.scrollLeft;
-                        const startTime = (Math.min(zoomStartX, zoomEndX) + currentScrollLeft) / TIMESTEP_WIDTH;
-                        const endTime = (Math.max(zoomStartX, zoomEndX) + currentScrollLeft) / TIMESTEP_WIDTH;
-                        
-                        const timeRange = endTime - startTime;
-                        
-                        if(timeRange > 0) {
-                            TIMESTEP_WIDTH = canvasWrapper.clientWidth / timeRange;
-                            render();
-                            canvasWrapper.scrollLeft = startTime * TIMESTEP_WIDTH;
-                        }
-                    }
-                });
-            };
-            
-            const addFitToScreenLogic = () => {
-                fitToScreenBtn.addEventListener('click', () => {
-                    if (timeStepCount > 0) {
-                        TIMESTEP_WIDTH = canvasWrapper.clientWidth / timeStepCount;
-                        TIMESTEP_WIDTH = Math.max(10, TIMESTEP_WIDTH);
-                        render();
-                    }
-                });
-            };
-            
-            const clearSelection = () => {
-                selectedCells.forEach(cell => cell.classList.remove('selected'));
-                selectedCells.clear();
-                valueDropdown.classList.add('hidden');
-            };
-
-            const addSelectionLogic = () => {
-                selectCellsBtn.addEventListener('click', () => {
-                    isSelectionMode = !isSelectionMode;
-                    selectCellsBtn.classList.toggle('btn-active');
-                    if (!isSelectionMode) {
-                        clearSelection();
-                    }
-                    renderTable(); // Re-render to toggle contenteditable
-                });
-                
-                tableBody.addEventListener('mousedown', (e) => {
-                    if (!isSelectionMode || !e.target.classList.contains('value-cell')) return;
-                    e.preventDefault();
-                    isDragging = true;
-                    startCell = e.target;
-
-                    if (!e.ctrlKey && !e.metaKey) {
-                        clearSelection();
-                    }
-                    
-                    if (selectedCells.has(startCell)) {
-                        selectedCells.delete(startCell);
-                        startCell.classList.remove('selected');
-                    } else {
-                        selectedCells.add(startCell);
-                        startCell.classList.add('selected');
-                    }
-                });
-
-                tableBody.addEventListener('mouseover', (e) => {
-                    if (!isDragging || !e.target.classList.contains('value-cell')) return;
-                    endCell = e.target;
-                    
-                    document.querySelectorAll('.value-cell').forEach(cell => {
-                         if(cell !== startCell) cell.classList.remove('selected');
-                    });
-                     
-                    selectedCells.forEach(c => c.classList.add('selected'));
-                    
-                    const startCoords = {
-                        row: parseInt(startCell.parentElement.rowIndex, 10),
-                        col: parseInt(startCell.cellIndex, 10)
-                    };
-                    const endCoords = {
-                        row: parseInt(endCell.parentElement.rowIndex, 10),
-                        col: parseInt(endCell.cellIndex, 10)
-                    };
-
-                    const minRow = Math.min(startCoords.row, endCoords.row);
-                    const maxRow = Math.max(startCoords.row, endCoords.row);
-                    const minCol = Math.min(startCoords.col, endCoords.col);
-                    const maxCol = Math.max(startCoords.col, endCoords.col);
-
-                    for (let i = minRow; i <= maxRow; i++) {
-                        for (let j = minCol; j <= maxCol; j++) {
-                            const cell = tableBody.rows[i-1]?.cells[j];
-                            if (cell && cell.classList.contains('value-cell')) {
-                                cell.classList.add('selected');
-                            }
-                        }
-                    }
-                });
-                
-                document.addEventListener('mouseup', (e) => {
-                    if (!isDragging) return;
-                    isDragging = false;
-                    
-                    document.querySelectorAll('.value-cell.selected').forEach(cell => {
-                        selectedCells.add(cell);
-                    });
-
-                    if (selectedCells.size > 0) {
-                        valueDropdown.classList.remove('hidden');
-                    } else {
-                        valueDropdown.classList.add('hidden');
-                    }
-                    startCell = null;
-                    endCell = null;
-                });
-
-                valueDropdown.addEventListener('click', (e) => {
-                    const button = e.target.closest('button');
-                    if (button && button.dataset.value) {
-                        const newValue = button.dataset.value;
-                        selectedCells.forEach(cell => {
-                            const signalIndex = cell.dataset.signalIndex;
-                            const timeIndex = cell.dataset.timeIndex;
-                            if (signalIndex !== undefined && timeIndex !== undefined) {
-                                signals[signalIndex].values[timeIndex] = newValue;
-                                cell.textContent = newValue;
-                            }
-                        });
-                        renderCanvas();
-                        clearSelection();
-                    }
-                });
-            };
-            
-             const updateDeltaField = () => {
-                if (markerTime !== null && marker2Time !== null) {
-                    const delta = Math.abs(marker2Time - markerTime);
-                    deltaField.value = delta.toFixed(2);
-                } else {
-                    deltaField.value = "";
-                }
-            };
-
-            const addMarkerLogic = () => {
-                canvasWrapper.addEventListener('mousedown', (e) => {
-                    if (isSelectionMode || e.target !== canvas || isZoomDragging) return;
-                    
-                    const x = e.offsetX;
-                    const currentTime = x / TIMESTEP_WIDTH;
-
-                    // e.buttons: 1=left, 2=right, 3=left+right
-                    if (e.buttons === 1) { // Left click
-                        markerTime = currentTime;
-                        scanField.value = markerTime.toFixed(2);
-                    } else if (e.buttons === 3) { // Left and Right click
-                        e.preventDefault(); // Prevent context menu
-                        marker2Time = currentTime;
-                    }
-                    
-                    updateDeltaField();
-                    renderCanvas();
-                });
-                
-                canvasWrapper.addEventListener('contextmenu', e => e.preventDefault());
-            };
-
-            const exportToCsv = () => {
-                let csvContent = "";
-                
-                const headers = ["Signal Name", "Range", ...Array.from({ length: timeStepCount }, (_, i) => i)];
-                csvContent += headers.join(",") + "\r\n";
-
-                signals.forEach(signal => {
-                    const row = [
-                        `"${signal.name.replace(/"/g, '""')}"`,
-                        `"${signal.range.replace(/"/g, '""')}"`,
-                        ...signal.values
-                    ];
-                    csvContent += row.join(",") + "\r\n";
-                });
-
-                const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-                const link = document.createElement("a");
-                const url = URL.createObjectURL(blob);
-                link.setAttribute("href", url);
-                link.setAttribute("download", "waveform_data.csv");
-                link.style.visibility = 'hidden';
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-            };
-
-            const parseCsvAndRender = (csvText) => {
-                try {
-                    const newSignals = [];
-                    let newTimeStepCount = 0;
-                    // Sanitize the CSV text by removing ```csv and ``` markers
-                    const sanitizedCsv = csvText.replace(/```csv\n/g, '').replace(/```/g, '');
-                    const rows = sanitizedCsv.trim().split(/\r?\n/);
-                    if (rows.length < 1) {
-                        throw new Error("CSV file is empty or invalid.");
-                    }
-                    const header = rows[0].split(',');
-                    newTimeStepCount = Math.max(0, header.length - 2);
-                    for (let i = 1; i < rows.length; i++) {
-                        const cells = rows[i].split(',');
-                        if (cells.length < 2) continue;
-                        const name = cells[0].replace(/^"|"$/g, '').replace(/""/g, '"');
-                        const range = cells[1].replace(/^"|"$/g, '').replace(/""/g, '"');
-                        const values = cells.slice(2, 2 + newTimeStepCount);
-                        while(values.length < newTimeStepCount) {
-                            values.push('X');
-                        }
-                        newSignals.push(createSignal(name, range, values));
-                    }
-                    signals = newSignals;
-                    timeStepCount = newTimeStepCount;
-                    markerTime = null;
-                    marker2Time = null;
-                    scanField.value = "";
-                    deltaField.value = "";
-                    render();
-                } catch (error) {
-                     alert(`Failed to parse CSV: ${error.message}`);
-                }
-            };
-
-            const handleCsvImport = (event) => {
-                const file = event.target.files[0];
-                if (!file) return;
-                const reader = new FileReader();
-                reader.onload = (e) => parseCsvAndRender(e.target.result);
-                reader.readAsText(file);
-                event.target.value = '';
-            };
-
-            const showConfirmationModal = (title, message, onConfirm) => {
-                generatorModalTitle.textContent = title;
-                generatorModalContent.innerHTML = `<p>${message}</p>`;
-
-                // Modify the existing button instead of replacing it
-                generatorApplyBtn.textContent = 'Confirm';
-                generatorApplyBtn.onclick = () => {
-                    onConfirm();
-                    hideGeneratorModal();
-                };
-                generatorModalOverlay.classList.remove('hidden');
-            };
-
-            // --- Signal Generation Logic ---
-            const hideGeneratorModal = () => {
-                generatorModalOverlay.classList.add('hidden');
-                // Reset the button to its default state after any modal action
-                generatorApplyBtn.textContent = 'Generate';
-                generatorApplyBtn.onclick = null;
-            };
-            
-            const setupClockModal = () => {
-                generatorModalTitle.textContent = 'Generate Clock';
-                generatorModalContent.innerHTML = `
-                    <label for="clock-period">Half Period (timesteps):</label>
-                    <input type="number" id="clock-period" value="1" min="1">
-                    <label for="clock-start">Start From:</label>
-                    <select id="clock-start">
-                        <option value="0">0</option>
-                        <option value="1" selected>1</option>
-                    </select>
-                `;
-                generatorApplyBtn.textContent = 'Generate'; // Ensure correct button text
-                generatorApplyBtn.onclick = executeClockGeneration;
-                generatorModalOverlay.classList.remove('hidden');
-            };
-
-            const executeClockGeneration = () => {
-                const halfPeriod = parseInt(document.getElementById('clock-period').value, 10) || 1;
-                const startValue = document.getElementById('clock-start').value;
-                const signal = signals[activeSignalIndexForGeneration];
-                if (!signal) return;
-
-                const newValues = [];
-                for (let i = 0; i < timeStepCount; i++) {
-                    const cyclePhase = Math.floor(i / halfPeriod) % 2;
-                    let value;
-                    if (startValue === '0') {
-                        value = cyclePhase === 0 ? '0' : '1';
-                    } else { // startValue is '1'
-                        value = cyclePhase === 0 ? '1' : '0';
-                    }
-                    newValues.push(value);
-                }
-                signal.values = newValues;
-                hideGeneratorModal();
-                render();
-            };
-
-            const setupResetModal = () => {
-                generatorModalTitle.textContent = 'Generate Reset';
-                 generatorModalContent.innerHTML = `
-                    <label for="reset-cycles">De-assert after # cycles:</label>
-                    <input type="number" id="reset-cycles" value="4" min="1">
-                    <label for="reset-edge">Trigger Edge:</label>
-                    <select id="reset-edge">
-                        <option value="posedge">Posedge</option>
-                        <option value="negedge">Negedge</option>
-                    </select>
-                `;
-                generatorApplyBtn.textContent = 'Generate'; // Ensure correct button text
-                generatorApplyBtn.onclick = executeResetGeneration;
-                generatorModalOverlay.classList.remove('hidden');
-            };
-            
-            const executeResetGeneration = () => {
-                const cycles = parseInt(document.getElementById('reset-cycles').value, 10) || 4;
-                const edge = document.getElementById('reset-edge').value;
-                const signal = signals[activeSignalIndexForGeneration];
-                const clkSignal = signals.find(s => s.name.toLowerCase() === 'clk');
-
-                if (!signal || !clkSignal) {
-                    alert('A clock signal named "clk" must exist to generate a reset.');
-                    return;
-                }
-
-                let edgeCount = 0;
-                let deassertIndex = -1;
-
-                for (let i = 1; i < timeStepCount; i++) {
-                    const prev = clkSignal.values[i-1];
-                    const curr = clkSignal.values[i];
-                    if (edge === 'posedge' && prev === '0' && curr === '1') {
-                        edgeCount++;
-                    } else if (edge === 'negedge' && prev === '1' && curr === '0') {
-                        edgeCount++;
-                    }
-                    if (edgeCount === cycles) {
-                        deassertIndex = i;
-                        break;
-                    }
-                }
-                
-                const newValues = signal.values.slice();
-                for (let i = 0; i < timeStepCount; i++) {
-                    // Assuming active low reset
-                    if (deassertIndex === -1 || i < deassertIndex) {
-                        newValues[i] = '0';
-                    } else {
-                        newValues[i] = '1';
-                    }
-                }
-                signal.values = newValues;
-                hideGeneratorModal();
-                render();
-            };
-
-            const setupFsmModal = () => {
-                generatorModalTitle.textContent = 'Generate FSM States';
-                generatorModalContent.innerHTML = `
-                    <label for="fsm-range">Range:</label>
-                    <input type="text" id="fsm-range" value="[7:0]">
-                    <label for="fsm-state-count">Number of States:</label>
-                    <input type="number" id="fsm-state-count" value="2" min="1">
-                    <div id="fsm-state-entries" class="mt-4"></div>
-                `;
-                const countInput = document.getElementById('fsm-state-count');
-                const entriesContainer = document.getElementById('fsm-state-entries');
-                
-                const updateStateInputs = () => {
-                    const count = parseInt(countInput.value, 10) || 0;
-                    entriesContainer.innerHTML = '';
-                    for (let i = 0; i < count; i++) {
-                        const div = document.createElement('div');
-                        div.className = 'fsm-state-entry';
-                        div.innerHTML = `
-                             <input type="text" class="fsm-state-name-input" placeholder="State ${i + 1} Name">
-                             <input type="number" class="fsm-state-cycle-input" value="1" min="1" title="Cycles">
-                        `;
-                        entriesContainer.appendChild(div);
-                    }
-                };
-                
-                countInput.addEventListener('input', updateStateInputs);
-                updateStateInputs(); // Initial call
-                
-                generatorApplyBtn.textContent = 'Generate'; // Ensure correct button text
-                generatorApplyBtn.onclick = executeFsmGeneration;
-                generatorModalOverlay.classList.remove('hidden');
-            };
-
-            const executeFsmGeneration = () => {
-                const signal = signals[activeSignalIndexForGeneration];
-                if (!signal) return;
-
-                const range = document.getElementById('fsm-range').value;
-                const stateEntries = document.querySelectorAll('.fsm-state-entry');
-                
-                const statePattern = Array.from(stateEntries).map(entry => {
-                    const nameInput = entry.querySelector('.fsm-state-name-input');
-                    const cycleInput = entry.querySelector('.fsm-state-cycle-input');
-                    return {
-                        name: nameInput.value || nameInput.placeholder,
-                        cycles: parseInt(cycleInput.value, 10) || 1
-                    };
-                }).filter(state => state.name.trim() !== '');
-                
-                if (statePattern.length === 0) {
-                    hideGeneratorModal();
-                    return;
-                }
-
-                const newValues = [];
-                let patternIndex = 0;
-                while (newValues.length < timeStepCount) {
-                    const currentState = statePattern[patternIndex % statePattern.length];
-                    for (let i = 0; i < currentState.cycles; i++) {
-                        if (newValues.length < timeStepCount) {
-                            newValues.push(currentState.name);
-                        } else {
-                            break;
-                        }
-                    }
-                    patternIndex++;
-                }
-
-                signal.values = newValues;
-                signal.range = range;
-                hideGeneratorModal();
-                render();
-            };
-
-            const addSignalContextMenuLogic = () => {
-                tableBody.addEventListener('contextmenu', (e) => {
-                    const firstCell = e.target.closest('td:first-child');
-                    if (firstCell) {
-                        e.preventDefault();
-                        const signalIndex = firstCell.parentElement.rowIndex - 1;
-                        
-                        if (!selectedTableRows.has(signalIndex)) {
-                            selectedTableRows.clear();
-                            selectedTableRows.add(signalIndex);
-                            updateTableRowSelectionVisuals();
-                        }
-
-                        activeSignalIndexForGeneration = signalIndex;
-                        
-                        const menuHeight = signalContextMenu.offsetHeight;
-                        const windowHeight = window.innerHeight;
-                        let top = e.clientY;
-
-                        if (top + menuHeight > windowHeight) {
-                            top = e.clientY - menuHeight;
-                        }
-
-                        signalContextMenu.style.top = `${top}px`;
-                        signalContextMenu.style.left = `${e.clientX}px`;
-                        signalContextMenu.classList.remove('hidden');
-                    }
-                });
-                
-                document.getElementById('generate-clock').addEventListener('click', () => {
-                    signalContextMenu.classList.add('hidden');
-                    setupClockModal();
-                });
-                 document.getElementById('generate-reset').addEventListener('click', () => {
-                    signalContextMenu.classList.add('hidden');
-                    setupResetModal();
-                });
-                 document.getElementById('generate-fsm').addEventListener('click', () => {
-                    signalContextMenu.classList.add('hidden');
-                    setupFsmModal();
-                });
-
-                 document.getElementById('delete-signal').addEventListener('click', () => {
-                    signalContextMenu.classList.add('hidden');
-                    const indicesToDelete = Array.from(selectedTableRows).sort((a, b) => b - a);
-                    indicesToDelete.forEach(index => signals.splice(index, 1));
-                    selectedTableRows.clear();
-                    selectedSignalIndex = null;
-                    render();
-                });
-                 document.getElementById('duplicate-signal').addEventListener('click', () => {
-                    signalContextMenu.classList.add('hidden');
-                    const indicesToDuplicate = Array.from(selectedTableRows).sort((a, b) => a - b);
-                    let offset = 0;
-                    indicesToDuplicate.forEach(index => {
-                         const originalSignal = signals[index + offset];
-                         const newSignal = JSON.parse(JSON.stringify(originalSignal)); // Deep copy
-                         newSignal.name = originalSignal.name + "_copy";
-                         signals.splice(index + offset + 1, 0, newSignal);
-                         offset++;
-                    });
-                    selectedTableRows.clear();
-                    render();
-                });
-
-                generatorCancelBtn.addEventListener('click', hideGeneratorModal);
-                generatorModalOverlay.addEventListener('click', (e) => {
-                    if (e.target === generatorModalOverlay) {
-                        hideGeneratorModal();
-                    }
-                });
-            };
-
-             const addAiLogic = () => {
-                const aiResponseField = document.getElementById('ai-response-field');
-                const aiAddSignalBtn = document.getElementById('ai-add-signal-btn');
-                const aiAddScenarioBtn = document.getElementById('ai-add-scenario-btn');
-
-                const addAiSignalRow = () => {
-                    const container = document.getElementById('ai-signals-container');
-                    const div = document.createElement('div');
-                    div.className = 'flex gap-2 mb-2 items-center';
-                    div.innerHTML = `
-                        <input type="text" class="ai-signal-name w-1/2 p-2 border border-gray-300 rounded-md" placeholder="Signal Name">
-                        <input type="text" class="ai-signal-range w-1/2 p-2 border border-gray-300 rounded-md" placeholder="Range (e.g., [3:0])">
-                    `;
-                    container.appendChild(div);
-                };
-
-                const addAiScenarioRow = () => {
-                    const container = document.getElementById('ai-scenarios-container');
-                    const div = document.createElement('div');
-                    div.className = 'mb-2';
-                    div.innerHTML = `<textarea class="ai-scenario-textarea w-full p-2 border border-gray-300 rounded-md" rows="2" placeholder="Describe a scenario..."></textarea>`;
-                    container.appendChild(div);
-                };
-
-                aiAddSignalBtn.addEventListener('click', addAiSignalRow);
-                aiAddScenarioBtn.addEventListener('click', addAiScenarioRow);
-
-                aiBtn.addEventListener('click', () => {
-                    document.getElementById('ai-signals-container').innerHTML = '';
-                    document.getElementById('ai-scenarios-container').innerHTML = '';
-                    addAiSignalRow();
-                    addAiSignalRow();
-                    addAiScenarioRow();
-                    aiResponseField.value = '';
-                    aiStatus.textContent = '';
-                    aiModalOverlay.classList.remove('hidden');
-                });
-                aiCancelBtn.addEventListener('click', () => {
-                    aiModalOverlay.classList.add('hidden');
-                });
-                aiModalOverlay.addEventListener('click', (e) => {
-                    if (e.target === aiModalOverlay) {
-                         aiModalOverlay.classList.add('hidden');
-                    }
-                });
-
-                aiApplyBtn.addEventListener('click', async () => {
-                    const apiKey = document.getElementById('api-key-input').value;
-                    const designName = document.getElementById('ai-design-name').value;
-                    
-                    const signalRows = document.querySelectorAll('#ai-signals-container > div');
-                    let signalsList = [];
-                    signalRows.forEach(row => {
-                        const name = row.querySelector('.ai-signal-name').value;
-                        const range = row.querySelector('.ai-signal-range').value;
-                        if (name) {
-                            signalsList.push({ name, range });
-                        }
-                    });
-
-                    const scenarioTextareas = document.querySelectorAll('.ai-scenario-textarea');
-                    let scenariosList = [];
-                    scenarioTextareas.forEach(textarea => {
-                        if (textarea.value) {
-                            scenariosList.push(textarea.value);
-                        }
-                    });
-                    
-                    aiResponseField.value = '';
-                    aiStatus.textContent = '';
-
-                    if (!apiKey || !designName || signalsList.length === 0 || scenariosList.length === 0) {
-                        aiStatus.textContent = 'All fields are required.';
-                        return;
-                    }
-                    
-                    const finalPrompt = `For a design named "${designName}", create a CSV of waveform data with the following signals: ${signalsList.map(s => `"${s.name}" (Range: ${s.range || '1-bit'})`).join(', ')}. The CSV must have these columns: "Signal Name", "Range", and then integer timesteps from 0 up to 20. Generate the signal values based on these scenarios, in order: ${scenariosList.map((s, i) => `Scenario ${i+1}: "${s}"`).join('; ')}. Allocate 10 timesteps for each scenario. Important: Your entire response must be only the raw CSV data, with no introduction, explanation, or markdown formatting like \`\`\`csv.`;
-
-                    aiStatus.textContent = 'Generating...';
-                    aiApplyBtn.disabled = true;
-
-                    const apiUrl = 'https://api.openai.com/v1/chat/completions';
-                    const payload = {
-                        model: "gpt-3.5-turbo",
-                        messages: [{
-                            role: "user",
-                            content: finalPrompt
-                        }]
-                    };
-
-                    try {
-                        const response = await fetch(apiUrl, {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'Authorization': `Bearer ${apiKey}`
-                            },
-                            body: JSON.stringify(payload)
-                        });
-
-                        const result = await response.json();
-
-                        if (!response.ok) {
-                            throw new Error(result.error?.message || `API request failed with status ${response.status}`);
-                        }
-
-                        const csvText = result.choices?.[0]?.message?.content;
-
-                        if (csvText) {
-                            aiResponseField.value = csvText;
-                            parseCsvAndRender(csvText);
-                        } else {
-                             const errorText = "Invalid response format from AI. Full response:\n" + JSON.stringify(result, null, 2);
-                            aiResponseField.value = errorText;
-                            throw new Error("Invalid response format from AI.");
-                        }
-
-                    } catch (error) {
-                        aiStatus.textContent = `Error: ${error.message}`;
-                        aiResponseField.value = `Error: ${error.message}`;
-                    } finally {
-                        if(aiStatus.textContent === 'Generating...') {
-                           aiStatus.textContent = 'Done. You can close this window now.';
-                        }
-                        aiApplyBtn.disabled = false;
-                    }
-                });
-            };
-
-            const addSignalSelectionLogic = () => {
-                signalLabels.addEventListener('click', (e) => {
-                    const row = e.target.closest('.signal-label-row');
-                    if (row && signalLabelsBody) {
-                        const allRows = Array.from(signalLabelsBody.children);
-                        const index = allRows.indexOf(row);
-                        
-                        if (selectedSignalIndex === index) {
-                            selectedSignalIndex = null; // Deselect if clicked again
-                            colorPickerContainer.classList.add('hidden');
-                        } else {
-                            selectedSignalIndex = index;
-                            colorPickerContainer.classList.remove('hidden');
-                            colorPicker.value = signals[index].color;
-                        }
-                        renderCanvas();
-                        renderSignalLabels();
-                    }
-                });
-            };
-            
-            const addEdgeNavigationLogic = () => {
-                const findEdge = (forward) => {
-                    if (selectedSignalIndex === null) return;
-                    const signal = signals[selectedSignalIndex];
-                    const transitions = getSignalTransitionTimes(signal);
-                    const currentTime = markerTime === null ? (forward ? -1 : timeStepCount + 1) : markerTime;
-                    let edgeTime;
-
-                    if (forward) {
-                        edgeTime = transitions.find(t => t > currentTime + 0.001);
-                    } else {
-                        edgeTime = transitions.slice().reverse().find(t => t < currentTime - 0.001);
-                    }
-
-                    if (edgeTime !== undefined) {
-                        markerTime = edgeTime;
-                        scanField.value = markerTime.toFixed(2);
-                        renderCanvas();
-                    }
-                };
-
-                nextEdgeBtn.addEventListener('click', () => findEdge(true));
-                prevEdgeBtn.addEventListener('click', () => findEdge(false));
-            };
-
-            const getSignalTransitionTimes = (signal) => {
-                const transitions = [];
-                if (!signal || timeStepCount === 0) return transitions;
-
-                for (let i = 1; i < timeStepCount; i++) {
-                    const prevParsed = parseValue(signal.values[i - 1]);
-                    const currParsed = parseValue(signal.values[i]);
-
-                    if (currParsed.value !== prevParsed.value) {
-                        transitions.push(i + currParsed.delay);
-                    }
-                }
-                return transitions;
-            };
-
-            const updateTableRowSelectionVisuals = () => {
-                const rows = tableBody.querySelectorAll('tr');
-                rows.forEach((row, index) => {
-                    if (selectedTableRows.has(index)) {
-                        row.classList.add('table-row-selected');
-                    } else {
-                        row.classList.remove('table-row-selected');
-                    }
-                });
-            };
-
-            const addTableRowSelectionLogic = () => {
-                tableBody.addEventListener('click', (e) => {
-                    const row = e.target.closest('tr');
-                    if (!row) return;
-
-                    const signalIndex = row.rowIndex - 1; // rowIndex is 1-based, our index is 0-based
-
-                    if (e.ctrlKey) {
-                        if (selectedTableRows.has(signalIndex)) {
-                            selectedTableRows.delete(signalIndex);
-                        } else {
-                            selectedTableRows.add(signalIndex);
-                        }
-                    } else {
-                        selectedTableRows.clear();
-                        selectedTableRows.add(signalIndex);
-                    }
-                    updateTableRowSelectionVisuals();
-                });
-            };
-            
-            const handleSignalDoubleClick = (index) => {
-                const signal = signals[index];
-                if (!signal) return;
-
-                // If clicking a bit signal, find the parent and collapse it.
-                if (signal.isBusMember) {
-                    const parentIndex = signals.findIndex(s => s.name === signal.busParentName);
-                    if (parentIndex !== -1) {
-                        handleSignalDoubleClick(parentIndex);
-                    }
-                    return;
-                }
-
-                const rangeMatch = signal.range.match(/\[(\d+):(\d+)\]/);
-                if (!rangeMatch) return;
-
-                if (signal.isExpanded) {
-                    // Collapse
-                    const children = signals.filter(s => s.busParentName === signal.name);
-                    if (children.length > 0) {
-                        const firstChildIndex = signals.findIndex(s => s.id === children[0].id);
-                        signals.splice(firstChildIndex, children.length);
-                    }
-                    signal.isExpanded = false;
-                    render();
-                } else {
-                    // Expand
-                    const high = parseInt(rangeMatch[1], 10);
-                    const low = parseInt(rangeMatch[2], 10);
-                    const width = high - low + 1;
-
-                    if (width <= 1) return;
-
-                    const newBitSignals = [];
-                    for (let i = high; i >= low; i--) {
-                        const newSignal = createSignal(`${signal.name.split('[')[0]}[${i}]`, '', []);
-                        newSignal.isBusMember = true;
-                        newSignal.busParentName = signal.name;
-                        
-                        for (let t = 0; t < timeStepCount; t++) {
-                            const busValue = parseValue(signal.values[t]).value;
-                            let bits = '';
-                            
-                            if (busValue.toUpperCase() === 'X' || busValue.toUpperCase() === 'Z') {
-                                bits = busValue.toUpperCase().repeat(width);
-                            } else if (busValue.startsWith('0x')) {
-                                bits = parseInt(busValue, 16).toString(2).padStart(width, '0');
-                            } else {
-                                bits = parseInt(busValue, 10).toString(2).padStart(width, '0');
-                            }
-
-                            if (bits.length > width) {
-                                bits = bits.slice(bits.length - width);
-                            }
-                            
-                            const bitIndex = high - i;
-                            newSignal.values.push(bits[bitIndex] || 'X');
-                        }
-                        newBitSignals.push(newSignal);
-                    }
-                    signals.splice(index + 1, 0, ...newBitSignals);
-                    signal.isExpanded = true;
-                    render();
-                }
-            };
-
-            const addColorPickerLogic = () => {
-                colorPicker.addEventListener('input', (e) => {
-                    if (selectedSignalIndex !== null) {
-                        signals[selectedSignalIndex].color = e.target.value;
-                        renderCanvas();
-                    }
-                });
-            };
-
-            timeStepCount = 15;
-            signals.push(createSignal('clk', '', ['0','1','0','1','0','1','0','1','0','1','0','1','0','1','0']));
-            signals.push(createSignal('a_very_long_signal_name_that_needs_resizing', '', ['0','0','1','1','1','0','0','0','1','1','0','0','0','0','0']));
-            signals.push(createSignal('addr[7:0]', '[7:0]', ['0x10', '0x10', '0x2A', '0x2A', 'X', 'X', 'X', '0x2A', '0xFE', '0xFE', '0xFE', '0xFE', '0xFE', '0xFE', '0xFE']));
-            signals.push(createSignal('rst_n', '', ['0','0','1','1','1','1','1','1','1','1','1','1','1','1','1']));
-            signals.push(createSignal('en', '', ['1', '1', 'z', 'z', 'z', '0', '0', 'x', 'x', '1', '1', '1', '1', '0', '0']));
-            
-            addResizerLogic();
-            addColumnResizerLogic();
-            addContextMenuLogic();
-            addZoomLogic();
-            addFitToScreenLogic();
-            addSelectionLogic();
-            addMarkerLogic();
-            addSignalContextMenuLogic();
-            addAiLogic();
-            addSignalSelectionLogic();
-            addEdgeNavigationLogic();
-            addTableRowSelectionLogic();
-            addColorPickerLogic();
-
-            signalLabels.addEventListener('dblclick', (e) => {
-                const row = e.target.closest('.signal-label-row');
-                 if (row && signalLabelsBody) {
-                    const allRows = Array.from(signalLabelsBody.children);
-                    const index = allRows.indexOf(row);
-                    handleSignalDoubleClick(index);
-                }
-            });
-
-             tableBody.addEventListener('dblclick', (e) => {
-                const cell = e.target.closest('td:first-child');
-                if (cell) {
-                    const signalIndex = cell.parentElement.rowIndex - 1;
-                    handleSignalDoubleClick(signalIndex);
-                }
-            });
-
-            saveCsvBtn.addEventListener('click', exportToCsv);
-            importCsvBtn.addEventListener('click', () => csvFileInput.click());
-            csvFileInput.addEventListener('change', handleCsvImport);
-            clearDataBtn.addEventListener('click', () => {
-                showConfirmationModal(
-                    'Clear All Data',
-                    'Are you sure you want to delete all signals? This action cannot be undone.',
-                    () => {
-                        signals = [];
-                        timeStepCount = 0;
-                        markerTime = null;
-                        marker2Time = null;
-                        scanField.value = "";
-                        deltaField.value = "";
-                        render();
-                    }
-                );
-            });
-            
-            posEdgeToggle.addEventListener('change', (e) => {
-                posEdgeEnabled = e.target.checked;
-                renderCanvas();
-            });
-            negEdgeToggle.addEventListener('change', (e) => {
-                negEdgeEnabled = e.target.checked;
-                renderCanvas();
-            });
-
-            render();
+</div>
+
+<!-- VERILOG RTL MODAL -->
+<div id="verilog-modal-overlay" class="modal-overlay hidden">
+    <div class="modal wide" style="max-width:760px;">
+        <div class="modal-title"><i class="ph ph-code"></i>Verilog RTL Generator</div>
+        <div id="verilog-stats" style="margin-bottom:12px;"></div>
+        <div class="modal-tabs">
+            <div class="modal-tab active" data-tab="config">Configuration</div>
+            <div class="modal-tab" data-tab="module">Module</div>
+            <div class="modal-tab" data-tab="fsm">FSM</div>
+            <div class="modal-tab" data-tab="tb">Testbench</div>
+        </div>
+        <div id="tab-config" class="tab-panel active">
+            <div class="vg-row" style="margin-bottom:10px;">
+                <div>
+                    <label>MODULE NAME</label>
+                    <input type="text" id="verilog-module-name" placeholder="e.g., axi_slave">
+                </div>
+            </div>
+            <label>RTL OPTIONS</label>
+            <div class="module-opt"><input type="checkbox" id="chk-always" checked><div><div class="module-opt-lbl">Sequential always block</div><div class="module-opt-desc">Generate clocked always @(posedge clk)</div></div></div>
+            <div class="module-opt"><input type="checkbox" id="chk-async-reset"><div><div class="module-opt-lbl">Asynchronous reset</div><div class="module-opt-desc">Use always @(posedge clk or negedge rst_n)</div></div></div>
+            <div class="module-opt"><input type="checkbox" id="chk-fsm" checked><div><div class="module-opt-lbl">FSM state machine</div><div class="module-opt-desc">Auto-detect named bus states → case statement</div></div></div>
+            <div class="module-opt"><input type="checkbox" id="chk-tb" checked><div><div class="module-opt-lbl">Generate testbench</div><div class="module-opt-desc">Create tb_module.v with waveform stimulus</div></div></div>
+            <div class="modal-actions" style="justify-content:flex-start; margin-top:12px; padding-top:0;">
+                <button class="btn-primary" id="verilog-generate-btn"><i class="ph ph-lightning"></i>&nbsp;Generate RTL</button>
+            </div>
+        </div>
+        <div id="tab-module" class="tab-panel">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+                <span style="font-size:10px;color:var(--text3);font-weight:600;letter-spacing:0.5px;">MODULE RTL</span>
+                <button class="copy-btn" id="copy-module-btn">Copy</button>
+            </div>
+            <div class="code-area" id="verilog-module-output">// Click "Generate RTL" on the Configuration tab</div>
+        </div>
+        <div id="tab-fsm" class="tab-panel">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+                <span style="font-size:10px;color:var(--text3);font-weight:600;letter-spacing:0.5px;">FSM LOGIC</span>
+                <button class="copy-btn" id="copy-fsm-btn">Copy</button>
+            </div>
+            <div class="code-area" id="verilog-fsm-output">// No FSM detected</div>
+        </div>
+        <div id="tab-tb" class="tab-panel">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+                <span style="font-size:10px;color:var(--text3);font-weight:600;letter-spacing:0.5px;">TESTBENCH</span>
+                <button class="copy-btn" id="copy-tb-btn">Copy</button>
+            </div>
+            <div class="code-area" id="verilog-tb-output">// Click "Generate RTL" on the Configuration tab</div>
+        </div>
+        <div class="modal-actions">
+            <button id="verilog-cancel-btn" class="btn-cancel">Close</button>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    // ===== CONSTANTS & STATE =====
+    let TIMESTEP_WIDTH = 56;
+    const ROW_HEIGHT = 44;
+    const TOP_MARGIN = 22;
+    const C = {
+        bg: '#ffffff', grid: '#f0f0f0', gridBright: '#e0e0e0',
+        text: '#888', line: '#0067c0', bus: '#6b46c1',
+        unknown: 'rgba(196,43,28,0.18)', highZ: '#9b5100',
+        m1: '#e8a400', m2: '#107c10'
+    };
+    const FONT = '500 10px "JetBrains Mono", monospace';
+
+    let signals = [], timeStepCount = 0;
+    let signalNameColWidth = 130, rangeColWidth = 68;
+    let isSelectionMode = false, selectedCells = new Set();
+    let isDragging = false, startCell = null, endCell = null;
+    let markerTime = null, marker2Time = null;
+    let activeSignalIndexForGeneration = null;
+    let selectedSignalIndex = null, selectedTableRows = new Set();
+    let posEdgeEnabled = false, negEdgeEnabled = false;
+    let valueOnFocus = '', isZoomDragging = false, zoomStartX = 0;
+    let signalLabelsBody = null;
+
+    const canvas = document.getElementById('waveformCanvas');
+    const ctx = canvas.getContext('2d');
+    const canvasWrapper = document.getElementById('canvas-wrapper');
+    const tableWrapper = document.getElementById('table-wrapper');
+    const signalLabels = document.getElementById('signal-labels');
+    const tableHeader = document.getElementById('table-header');
+    const tableBody = document.getElementById('table-body');
+    const mainArea = document.querySelector('.main-area');
+    const topPanel = document.querySelector('.top-panel');
+    const contextMenu = document.getElementById('context-menu');
+    const signalContextMenu = document.getElementById('signal-context-menu');
+    const scanField = document.getElementById('scan-field');
+    const deltaField = document.getElementById('delta-field');
+    const valueDropdown = document.getElementById('value-dropdown');
+    const colorPickerContainer = document.getElementById('color-picker-container');
+    const colorPicker = document.getElementById('signal-color-picker');
+    const genModalOverlay = document.getElementById('generator-modal-overlay');
+    const genModalTitle = document.getElementById('generator-modal-title');
+    const genModalContent = document.getElementById('generator-modal-content');
+    const genApplyBtn = document.getElementById('generator-apply-btn');
+    const genCancelBtn = document.getElementById('generator-cancel-btn');
+    const verilogModalOverlay = document.getElementById('verilog-modal-overlay');
+
+    const createSignal = (name, range, values) => ({
+        name, range, values,
+        id: Math.random().toString(36).substr(2, 9),
+        isExpanded: false, isBusMember: false, busParentName: null,
+        color: '#0067c0'
+    });
+
+    // ===== RENDER =====
+    const render = () => { renderCanvas(); renderTable(); renderSignalLabels(); updateTableRowSelectionVisuals(); };
+
+    const renderCanvas = () => {
+        const cw = Math.max(timeStepCount * TIMESTEP_WIDTH, canvasWrapper.clientWidth);
+        const ch = signals.length * ROW_HEIGHT + TOP_MARGIN;
+        canvas.width = cw; canvas.height = ch;
+        ctx.fillStyle = C.bg; ctx.fillRect(0, 0, cw, ch);
+
+        if (selectedSignalIndex !== null) {
+            ctx.fillStyle = 'rgba(0,103,192,0.05)';
+            ctx.fillRect(0, selectedSignalIndex * ROW_HEIGHT + TOP_MARGIN, cw, ROW_HEIGHT);
+        }
+
+        ctx.font = FONT;
+        for (let i = 0; i <= timeStepCount; i++) {
+            const x = i * TIMESTEP_WIDTH;
+            ctx.strokeStyle = i % 5 === 0 ? C.gridBright : C.grid;
+            ctx.lineWidth = 1;
+            ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, ch); ctx.stroke();
+            if (i < timeStepCount) {
+                ctx.fillStyle = C.text; ctx.textAlign = 'center';
+                ctx.fillText(i.toString(), x + TIMESTEP_WIDTH / 2, 14);
+            }
+        }
+        for (let i = 0; i <= signals.length; i++) {
+            const y = i * ROW_HEIGHT + TOP_MARGIN;
+            ctx.strokeStyle = C.grid; ctx.lineWidth = 1;
+            ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(cw, y); ctx.stroke();
+        }
+        signals.forEach((s, i) => drawWave(s, i * ROW_HEIGHT + TOP_MARGIN, i));
+
+        if (markerTime !== null) {
+            const x = markerTime * TIMESTEP_WIDTH;
+            ctx.strokeStyle = C.m1; ctx.lineWidth = 1.5; ctx.setLineDash([4,3]);
+            ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,ch); ctx.stroke(); ctx.setLineDash([]);
+        }
+        if (marker2Time !== null) {
+            const x = marker2Time * TIMESTEP_WIDTH;
+            ctx.strokeStyle = C.m2; ctx.lineWidth = 1.5; ctx.setLineDash([4,3]);
+            ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,ch); ctx.stroke(); ctx.setLineDash([]);
+        }
+    };
+
+    const renderSignalLabels = () => {
+        signalLabels.style.width = `${signalNameColWidth + rangeColWidth + 4}px`;
+        signalLabels.innerHTML = '';
+        const hdr = document.createElement('div');
+        hdr.className = 'sig-lbl-header';
+        hdr.innerHTML = `<div class="sig-name-col" style="width:${signalNameColWidth}px;min-width:${signalNameColWidth}px;">Signal</div><div class="col-resizer"></div><div class="sig-range-col" style="width:${rangeColWidth}px;min-width:${rangeColWidth}px;text-align:center;">Range</div>`;
+        signalLabels.appendChild(hdr);
+        const body = document.createElement('div');
+        body.className = 'signal-labels-body';
+        signalLabels.appendChild(body);
+        signalLabelsBody = body;
+        signals.forEach((sig, idx) => {
+            const row = document.createElement('div');
+            row.className = 'sig-lbl-row' + (idx === selectedSignalIndex ? ' selected-row' : '');
+            const rm = sig.range.match(/\[(\d+):(\d+)\]/);
+            const exp = rm && parseInt(rm[1]) > parseInt(rm[2]) && !sig.isBusMember;
+            const pre = exp ? (sig.isExpanded ? '▾ ' : '▸ ') : '';
+            const indent = sig.isBusMember ? 'padding-left:16px;' : '';
+            row.innerHTML = `<div class="sig-name-col" style="width:${signalNameColWidth}px;min-width:${signalNameColWidth}px;${indent}" title="${sig.name}"><span style="opacity:0.45;font-size:10px;">${pre}</span>${sig.name}</div><div class="sig-range-col" style="width:${rangeColWidth}px;min-width:${rangeColWidth}px;text-align:center;color:var(--text3);">${sig.range}</div>`;
+            body.appendChild(row);
         });
-    </script>
+    };
+
+    const renderTable = () => {
+        document.getElementById('col-signal-name').style.width = signalNameColWidth + 'px';
+        document.getElementById('col-range').style.width = rangeColWidth + 'px';
+        tableHeader.innerHTML = ''; tableBody.innerHTML = '';
+        const hr = document.createElement('tr');
+        hr.innerHTML = `<th style="width:${signalNameColWidth}px;min-width:${signalNameColWidth}px;text-align:left;padding-left:8px;">Signal Name</th><th style="width:${rangeColWidth}px;min-width:${rangeColWidth}px;">Range</th>`;
+        for (let i = 0; i < timeStepCount; i++) hr.innerHTML += `<th>${i}</th>`;
+        tableHeader.appendChild(hr);
+        signals.forEach((sig, si) => {
+            const rm = sig.range.match(/\[(\d+):(\d+)\]/);
+            const exp = rm && parseInt(rm[1]) > parseInt(rm[2]) && !sig.isBusMember;
+            const pre = exp ? (sig.isExpanded ? '▾ ' : '▸ ') : '';
+            const indent = sig.isBusMember ? 'padding-left:20px;' : '';
+            const row = document.createElement('tr');
+            let html = `<td style="text-align:left;${indent}width:${signalNameColWidth}px;min-width:${signalNameColWidth}px;"><span style="opacity:0.4;font-size:10px;">${pre}</span><input type="text" value="${sig.name}" data-signal-index="${si}" data-type="name" class="signal-input" ${sig.isBusMember ? 'readonly' : ''}></td><td style="width:${rangeColWidth}px;min-width:${rangeColWidth}px;"><input type="text" value="${sig.range}" data-signal-index="${si}" data-type="range" class="signal-input" style="text-align:center" ${sig.isBusMember ? 'readonly' : ''}></td>`;
+            sig.values.forEach((v, ti) => {
+                const err = !isValidValue(sig, v) ? ' cell-error' : '';
+                html += `<td class="value-cell${err}" contenteditable="${!isSelectionMode && !sig.isBusMember}" data-signal-index="${si}" data-time-index="${ti}">${v}</td>`;
+            });
+            row.innerHTML = html; tableBody.appendChild(row);
+        });
+    };
+
+    const parseValue = v => {
+        if (typeof v !== 'string') return { value: String(v), delay: 0 };
+        const m = v.match(/^(.*)\((\d*\.?\d+)\)$/);
+        if (m && m[1] !== '' && !isNaN(parseFloat(m[2]))) return { value: m[1].trim(), delay: Math.max(0, Math.min(0.99, parseFloat(m[2]))) };
+        return { value: v, delay: 0 };
+    };
+
+    const isValidValue = (sig, raw) => {
+        const { value: v } = parseValue(raw), up = v.toUpperCase();
+        if (['X','Z'].includes(up)) return true;
+        const rm = sig.range.match(/\[(\d+):(\d+)\]/);
+        if (rm && !sig.isBusMember) {
+            const w = Math.abs(parseInt(rm[1]) - parseInt(rm[2])) + 1, max = (2**w)-1;
+            const n = v.toLowerCase().startsWith('0x') ? parseInt(v,16) : parseInt(v,10);
+            if (isNaN(n)) return true; return n <= max;
+        }
+        return ['0','1'].includes(up);
+    };
+
+    const drawArrow = (x, y, up) => {
+        const s = 6; ctx.beginPath(); ctx.fillStyle = '#107c10';
+        if (up) { ctx.moveTo(x, y+s/2-s); ctx.lineTo(x-s/2, y+s/2); ctx.lineTo(x+s/2, y+s/2); }
+        else { ctx.moveTo(x, y-s/2+s); ctx.lineTo(x-s/2, y-s/2); ctx.lineTo(x+s/2, y-s/2); }
+        ctx.closePath(); ctx.fill();
+    };
+
+    const drawWave = (sig, y, si) => {
+        const yH = y + ROW_HEIGHT*0.2, yL = y + ROW_HEIGHT*0.8, yM = y + ROW_HEIGHT*0.5;
+        const yLv = v => v==='1' ? yH : (v==='0' ? yL : yM);
+        if (sig.range.trim() && sig.range.includes(':') && !sig.isBusMember) { drawBusWave(sig, y); return; }
+        const pts = [];
+        if (timeStepCount > 0) {
+            let ip = parseValue(sig.values[0]); pts.push({ t: ip.delay, val: ip.value });
+            for (let i = 1; i < timeStepCount; i++) {
+                let pp = parseValue(sig.values[i-1]), cp = parseValue(sig.values[i]);
+                if (cp.value !== pp.value) pts.push({ t: i+cp.delay, val: cp.value });
+            }
+            pts.push({ t: timeStepCount, val: parseValue(sig.values[timeStepCount-1]).value });
+        }
+        for (let i = 0; i < pts.length-1; i++) {
+            const sp = pts[i], ep = pts[i+1], sv = sp.val.toUpperCase();
+            const xS = sp.t*TIMESTEP_WIDTH, xE = ep.t*TIMESTEP_WIDTH;
+            ctx.strokeStyle = sig.color||C.line; ctx.lineWidth = 1.5;
+            if (sv==='1'||sv==='0') { ctx.beginPath(); ctx.moveTo(xS,yLv(sv)); ctx.lineTo(xE,yLv(sv)); ctx.stroke(); }
+            else if (sv==='X') { ctx.fillStyle=C.unknown; ctx.fillRect(xS,yH,xE-xS,yL-yH); }
+            else if (sv==='Z') { ctx.strokeStyle=C.highZ; ctx.beginPath(); ctx.moveTo(xS,yM); ctx.lineTo(xE,yM); ctx.stroke(); }
+            const ev = ep.val.toUpperCase();
+            if (sv!==ev) {
+                ctx.strokeStyle=sig.color||C.line;
+                ctx.beginPath(); ctx.moveTo(xE,yLv(sv)); ctx.lineTo(xE,yLv(ev)); ctx.stroke();
+                if (si===selectedSignalIndex) {
+                    if (posEdgeEnabled&&sv==='0'&&ev==='1') drawArrow(xE,yH,true);
+                    if (negEdgeEnabled&&sv==='1'&&ev==='0') drawArrow(xE,yL,false);
+                }
+            }
+        }
+    };
+
+    const drawBusWave = (sig, y) => {
+        const yT=y+ROW_HEIGHT*0.22, yB=y+ROW_HEIGHT*0.78, yM=y+ROW_HEIGHT*0.5;
+        const pts = [];
+        if (timeStepCount>0) {
+            let ip=parseValue(sig.values[0]); pts.push({t:ip.delay,val:ip.value});
+            for(let i=1;i<timeStepCount;i++){let pp=parseValue(sig.values[i-1]),cp=parseValue(sig.values[i]);if(cp.value!==pp.value)pts.push({t:i+cp.delay,val:cp.value});}
+            pts.push({t:timeStepCount,val:parseValue(sig.values[timeStepCount-1]).value});
+        }
+        for(let i=0;i<pts.length-1;i++){
+            const sp=pts[i],ep=pts[i+1],sv=sp.val.toUpperCase(),xS=sp.t*TIMESTEP_WIDTH,xE=ep.t*TIMESTEP_WIDTH;
+            if(sv==='X'){ctx.fillStyle=C.unknown;ctx.fillRect(xS,yT,xE-xS,yB-yT);}
+            else if(sv==='Z'){ctx.strokeStyle=C.highZ;ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(xS,yM);ctx.lineTo(xE,yM);ctx.stroke();}
+            else{
+                ctx.strokeStyle=sig.color||C.bus;ctx.lineWidth=1.5;
+                ctx.beginPath();ctx.moveTo(xS,yT);ctx.lineTo(xE,yT);ctx.moveTo(xS,yB);ctx.lineTo(xE,yB);ctx.stroke();
+                ctx.fillStyle='#333';ctx.textAlign='center';
+                const rw=xE-xS;if(ctx.measureText(sp.val).width<rw-8)ctx.fillText(sp.val,xS+rw/2,yM+3);
+            }
+            const ev=ep.val.toUpperCase();
+            if(sv!==ev){ctx.strokeStyle=sig.color||C.bus;ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(xE+2,yT-2);ctx.lineTo(xE-2,yB+2);ctx.moveTo(xE-2,yT-2);ctx.lineTo(xE+2,yB+2);ctx.stroke();}
+        }
+    };
+
+    // ===== EVENTS =====
+    document.getElementById('addSignalBtn').addEventListener('click', ()=>{signals.push(createSignal('new_signal','',Array(timeStepCount).fill('0')));render();});
+    document.getElementById('addTimeStepBtn').addEventListener('click', ()=>{signals.forEach(s=>s.values.push(s.values[s.values.length-1]||'0'));timeStepCount++;render();});
+
+    tableBody.addEventListener('focusin',e=>{if(e.target.classList.contains('value-cell'))valueOnFocus=e.target.textContent;});
+    tableBody.addEventListener('input',e=>{
+        if(isSelectionMode)return;
+        const t=e.target,si=t.dataset.signalIndex;if(si===undefined)return;
+        if(t.dataset.type==='name'){signals[si].name=t.value;renderSignalLabels();}
+        else if(t.dataset.type==='range'){signals[si].range=t.value;}
+        else if(t.dataset.timeIndex!==undefined){signals[si].values[t.dataset.timeIndex]=t.textContent;renderCanvas();}
+    });
+    tableBody.addEventListener('focusout',e=>{
+        if(isSelectionMode)return;
+        const t=e.target,si=parseInt(t.dataset.signalIndex,10);if(isNaN(si))return;
+        const ti=parseInt(t.dataset.timeIndex,10);
+        if(t.classList.contains('value-cell')&&!isNaN(ti)){
+            const op=parseValue(valueOnFocus),np=parseValue(t.textContent),dd=np.delay-op.delay;
+            if(Math.abs(dd)>0.001)for(let i=ti+1;i<timeStepCount;i++){const sp=parseValue(signals[si].values[i]);let cd=Math.max(0,Math.min(0.99,sp.delay+dd));signals[si].values[i]=cd>0.001?`${sp.value}(${parseFloat(cd.toFixed(2))})`:sp.value;}
+        }
+        render();
+    });
+
+    // Scroll sync
+    let isSyncing=false;
+    const syncScroll=src=>{if(isSyncing)return;isSyncing=true;const{scrollTop,scrollLeft}=src;[canvasWrapper,tableWrapper,signalLabelsBody].forEach(el=>{if(el&&el!==src){el.scrollTop=scrollTop;if(el!==signalLabelsBody)el.scrollLeft=scrollLeft;}});requestAnimationFrame(()=>isSyncing=false);};
+    canvasWrapper.addEventListener('scroll',()=>syncScroll(canvasWrapper));
+    tableWrapper.addEventListener('scroll',()=>syncScroll(tableWrapper));
+    signalLabels.addEventListener('scroll',e=>{if(e.target===signalLabelsBody)syncScroll(signalLabelsBody);},true);
+
+    // Panel resizer
+    (()=>{
+        let isR=false;
+        document.getElementById('resizer').addEventListener('mousedown',()=>{isR=true;document.body.style.userSelect='none';document.body.style.cursor='row-resize';});
+        document.addEventListener('mousemove',e=>{
+            if(!isR)return;
+            const rect=mainArea.getBoundingClientRect();let h=e.clientY-rect.top;
+            const min=40,snap=20;
+            if(h<snap)h=0;else if(rect.height-h<snap)h=rect.height-document.getElementById('resizer').offsetHeight;
+            else h=Math.max(min,Math.min(h,rect.height-min-document.getElementById('resizer').offsetHeight));
+            topPanel.style.height=`${h}px`;
+        });
+        document.addEventListener('mouseup',()=>{isR=false;document.body.style.userSelect='';document.body.style.cursor='';});
+    })();
+
+    // Column resizer
+    (()=>{
+        let isR=false,sx,sw,rw;
+        signalLabels.addEventListener('mousedown',e=>{
+            if(!e.target.classList.contains('col-resizer'))return;
+            isR=true;sx=e.clientX;sw=signalNameColWidth;rw=rangeColWidth;
+            document.body.style.cursor='col-resize';document.body.style.userSelect='none';
+            const mm=me=>{if(!isR)return;const dx=me.clientX-sx,nw=sw+dx,nr=rw-dx;if(nw>60&&nr>40){signalNameColWidth=nw;rangeColWidth=nr;renderSignalLabels();renderTable();}};
+            const mu=()=>{isR=false;document.body.style.cursor='';document.body.style.userSelect='';document.removeEventListener('mousemove',mm);document.removeEventListener('mouseup',mu);};
+            document.addEventListener('mousemove',mm);document.addEventListener('mouseup',mu);
+        });
+    })();
+
+    // Context menus
+    signalLabels.addEventListener('contextmenu',e=>{
+        const c=e.target.closest('.sig-name-col');if(c){e.preventDefault();const f=c.getAttribute('title');if(f){contextMenu.textContent=f;contextMenu.style.top=`${e.clientY}px`;contextMenu.style.left=`${e.clientX}px`;contextMenu.classList.remove('hidden');}}
+    });
+    window.addEventListener('click',()=>{contextMenu.classList.add('hidden');signalContextMenu.classList.add('hidden');});
+
+    // Zoom
+    canvasWrapper.addEventListener('wheel',e=>{
+        if(!e.ctrlKey)return;e.preventDefault();
+        const sl=canvasWrapper.scrollLeft,ow=timeStepCount*TIMESTEP_WIDTH,px=sl+e.clientX-canvasWrapper.getBoundingClientRect().left,r=ow>0?px/ow:0;
+        const nw=TIMESTEP_WIDTH*(e.deltaY>0?0.9:1.1);
+        if(nw>8&&nw<400){TIMESTEP_WIDTH=nw;render();canvasWrapper.scrollLeft=r*timeStepCount*TIMESTEP_WIDTH-(e.clientX-canvasWrapper.getBoundingClientRect().left);}
+    },{passive:false});
+    canvasWrapper.addEventListener('mousedown',e=>{if(e.buttons===1&&!isSelectionMode){isZoomDragging=true;zoomStartX=e.offsetX;canvasWrapper.style.cursor='ew-resize';}});
+    canvasWrapper.addEventListener('mousemove',e=>{
+        if(!isZoomDragging)return;renderCanvas();
+        const cx=e.offsetX,rx=Math.min(zoomStartX,cx),rw=Math.abs(zoomStartX-cx);
+        ctx.fillStyle='rgba(0,103,192,0.08)';ctx.strokeStyle='rgba(0,103,192,0.4)';ctx.lineWidth=1;
+        ctx.fillRect(rx,0,rw,canvas.height);ctx.strokeRect(rx,0,rw,canvas.height);
+    });
+    window.addEventListener('mouseup',e=>{
+        if(!isZoomDragging)return;isZoomDragging=false;canvasWrapper.style.cursor='default';
+        const ex=e.offsetX,dw=Math.abs(ex-zoomStartX);if(dw<10){renderCanvas();return;}
+        const csl=canvasWrapper.scrollLeft,st=(Math.min(zoomStartX,ex)+csl)/TIMESTEP_WIDTH,et=(Math.max(zoomStartX,ex)+csl)/TIMESTEP_WIDTH,tr=et-st;
+        if(tr>0){TIMESTEP_WIDTH=canvasWrapper.clientWidth/tr;render();canvasWrapper.scrollLeft=st*TIMESTEP_WIDTH;}
+    });
+
+    document.getElementById('fitToScreenBtn').addEventListener('click',()=>{if(timeStepCount>0){TIMESTEP_WIDTH=Math.max(8,canvasWrapper.clientWidth/timeStepCount);render();}});
+    document.getElementById('zoomInBtn').addEventListener('click',()=>{ const nw=TIMESTEP_WIDTH*1.25; if(nw<400){TIMESTEP_WIDTH=nw;render();} });
+    document.getElementById('zoomOutBtn').addEventListener('click',()=>{ const nw=TIMESTEP_WIDTH*0.8; if(nw>8){TIMESTEP_WIDTH=nw;render();} });
+
+    // Selection
+    const clearSel=()=>{selectedCells.forEach(c=>c.classList.remove('selected'));selectedCells.clear();valueDropdown.classList.remove('visible');};
+    document.getElementById('selectCellsBtn').addEventListener('click',()=>{isSelectionMode=!isSelectionMode;document.getElementById('selectCellsBtn').classList.toggle('active',isSelectionMode);if(!isSelectionMode)clearSel();renderTable();});
+    tableBody.addEventListener('mousedown',e=>{
+        if(!isSelectionMode||!e.target.classList.contains('value-cell'))return;e.preventDefault();isDragging=true;startCell=e.target;
+        if(!e.ctrlKey&&!e.metaKey)clearSel();
+        if(selectedCells.has(startCell)){selectedCells.delete(startCell);startCell.classList.remove('selected');}else{selectedCells.add(startCell);startCell.classList.add('selected');}
+    });
+    tableBody.addEventListener('mouseover',e=>{
+        if(!isDragging||!e.target.classList.contains('value-cell'))return;endCell=e.target;
+        document.querySelectorAll('.value-cell').forEach(c=>{if(c!==startCell)c.classList.remove('selected');});
+        selectedCells.forEach(c=>c.classList.add('selected'));
+        const sc={row:parseInt(startCell.parentElement.rowIndex),col:parseInt(startCell.cellIndex)};
+        const ec={row:parseInt(endCell.parentElement.rowIndex),col:parseInt(endCell.cellIndex)};
+        for(let i=Math.min(sc.row,ec.row);i<=Math.max(sc.row,ec.row);i++)for(let j=Math.min(sc.col,ec.col);j<=Math.max(sc.col,ec.col);j++){const c=tableBody.rows[i-1]?.cells[j];if(c&&c.classList.contains('value-cell'))c.classList.add('selected');}
+    });
+    document.addEventListener('mouseup',e=>{
+        if(!isDragging)return;isDragging=false;document.querySelectorAll('.value-cell.selected').forEach(c=>selectedCells.add(c));
+        if(selectedCells.size>0)valueDropdown.classList.add('visible');else valueDropdown.classList.remove('visible');
+        startCell=endCell=null;
+    });
+    valueDropdown.addEventListener('click',e=>{
+        const btn=e.target.closest('button');if(btn&&btn.dataset.value){const nv=btn.dataset.value;selectedCells.forEach(c=>{if(c.dataset.signalIndex!==undefined&&c.dataset.timeIndex!==undefined){signals[c.dataset.signalIndex].values[c.dataset.timeIndex]=nv;c.textContent=nv;}});renderCanvas();clearSel();}
+    });
+
+    // Markers
+    const updDelta=()=>{deltaField.value=(markerTime!==null&&marker2Time!==null)?Math.abs(marker2Time-markerTime).toFixed(2):'';};
+    canvasWrapper.addEventListener('mousedown',e=>{
+        if(isSelectionMode||e.target!==canvas||isZoomDragging)return;
+        const t=e.offsetX/TIMESTEP_WIDTH;
+        if(e.buttons===1){markerTime=t;scanField.value=t.toFixed(2);}
+        else if(e.buttons===3){e.preventDefault();marker2Time=t;}
+        updDelta();renderCanvas();
+    });
+    canvasWrapper.addEventListener('contextmenu',e=>e.preventDefault());
+
+    // CSV
+    const exportCsv=()=>{
+        let csv=[`Signal Name,Range,${Array.from({length:timeStepCount},(_,i)=>i).join(',')}\r\n`];
+        signals.forEach(s=>csv.push(`"${s.name.replace(/"/g,'""')}","${s.range.replace(/"/g,'""')}",${s.values.join(',')}\r\n`));
+        const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(csv,{type:'text/csv'}));a.download='waveform.csv';a.click();
+    };
+    const parseCsv=csvText=>{
+        try{
+            const rows=csvText.replace(/```csv\n?/g,'').replace(/```/g,'').trim().split(/\r?\n/);
+            const tc=Math.max(0,rows[0].split(',').length-2),ns=[];
+            for(let i=1;i<rows.length;i++){
+                const cells=rows[i].split(',');if(cells.length<2)continue;
+                const name=cells[0].replace(/^"|"$/g,'').replace(/""/g,'"'),range=cells[1].replace(/^"|"$/g,'').replace(/""/g,'"');
+                const values=cells.slice(2,2+tc);while(values.length<tc)values.push('X');
+                ns.push(createSignal(name,range,values));
+            }
+            signals=ns;timeStepCount=tc;markerTime=marker2Time=null;scanField.value='';deltaField.value='';render();
+        }catch(e){alert('CSV parse error: '+e.message);}
+    };
+    document.getElementById('saveCsvBtn').addEventListener('click',exportCsv);
+    document.getElementById('importCsvBtn').addEventListener('click',()=>document.getElementById('csv-file-input').click());
+    document.getElementById('csv-file-input').addEventListener('change',e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=ev=>parseCsv(ev.target.result);r.readAsText(f);e.target.value='';});
+    document.getElementById('clearDataBtn').addEventListener('click',()=>{if(!confirm('Clear all signals?'))return;signals=[];timeStepCount=0;markerTime=marker2Time=null;scanField.value='';deltaField.value='';render();});
+    document.getElementById('pos-edge-toggle').addEventListener('change',e=>{posEdgeEnabled=e.target.checked;renderCanvas();});
+    document.getElementById('neg-edge-toggle').addEventListener('change',e=>{negEdgeEnabled=e.target.checked;renderCanvas();});
+
+    // Signal selection
+    signalLabels.addEventListener('click',e=>{
+        const row=e.target.closest('.sig-lbl-row');if(row&&signalLabelsBody){
+            const idx=Array.from(signalLabelsBody.children).indexOf(row);
+            if(selectedSignalIndex===idx){selectedSignalIndex=null;colorPickerContainer.style.display='none';}
+            else{selectedSignalIndex=idx;colorPickerContainer.style.display='flex';colorPicker.value=signals[idx]?.color||'#0067c0';}
+            renderCanvas();renderSignalLabels();
+        }
+    });
+    colorPicker.addEventListener('input',e=>{if(selectedSignalIndex!==null){signals[selectedSignalIndex].color=e.target.value;renderCanvas();}});
+
+    // Bus expand
+    const handleDbl=idx=>{
+        const sig=signals[idx];if(!sig)return;
+        if(sig.isBusMember){const pi=signals.findIndex(s=>s.name===sig.busParentName);if(pi!==-1)handleDbl(pi);return;}
+        const rm=sig.range.match(/\[(\d+):(\d+)\]/);if(!rm)return;
+        if(sig.isExpanded){const kids=signals.filter(s=>s.busParentName===sig.name);if(kids.length)signals.splice(signals.findIndex(s=>s.id===kids[0].id),kids.length);sig.isExpanded=false;}
+        else{
+            const hi=parseInt(rm[1]),lo=parseInt(rm[2]),w=hi-lo+1;if(w<=1)return;
+            const bs=[];
+            for(let i=hi;i>=lo;i--){const ns=createSignal(`${sig.name.split('[')[0]}[${i}]`,'`',[]);ns.isBusMember=true;ns.busParentName=sig.name;
+                for(let t=0;t<timeStepCount;t++){const bv=parseValue(sig.values[t]).value;let bits=bv.toUpperCase()==='X'||bv.toUpperCase()==='Z'?bv.toUpperCase().repeat(w):(bv.startsWith('0x')?parseInt(bv,16):parseInt(bv,10)).toString(2).padStart(w,'0');if(bits.length>w)bits=bits.slice(bits.length-w);ns.values.push(bits[hi-i]||'X');}
+                bs.push(ns);}
+            signals.splice(idx+1,0,...bs);sig.isExpanded=true;
+        }
+        render();
+    };
+    signalLabels.addEventListener('dblclick',e=>{const row=e.target.closest('.sig-lbl-row');if(row&&signalLabelsBody)handleDbl(Array.from(signalLabelsBody.children).indexOf(row));});
+    tableBody.addEventListener('dblclick',e=>{const c=e.target.closest('td:first-child');if(c)handleDbl(c.parentElement.rowIndex-1);});
+
+    // Edge nav
+    const getTrans=sig=>{const t=[];for(let i=1;i<timeStepCount;i++){const pp=parseValue(sig.values[i-1]),cp=parseValue(sig.values[i]);if(cp.value!==pp.value)t.push(i+cp.delay);}return t;};
+    document.getElementById('prevEdgeBtn').addEventListener('click',()=>{if(selectedSignalIndex===null)return;const tr=getTrans(signals[selectedSignalIndex]),ct=markerTime===null?timeStepCount+1:markerTime,et=tr.slice().reverse().find(t=>t<ct-0.001);if(et!==undefined){markerTime=et;scanField.value=et.toFixed(2);renderCanvas();}});
+    document.getElementById('nextEdgeBtn').addEventListener('click',()=>{if(selectedSignalIndex===null)return;const tr=getTrans(signals[selectedSignalIndex]),ct=markerTime===null?-1:markerTime,et=tr.find(t=>t>ct+0.001);if(et!==undefined){markerTime=et;scanField.value=et.toFixed(2);renderCanvas();}});
+
+    // Row selection
+    const updRowSel=()=>tableBody.querySelectorAll('tr').forEach((r,i)=>r.classList.toggle('table-row-selected',selectedTableRows.has(i)));
+    tableBody.addEventListener('click',e=>{const row=e.target.closest('tr');if(!row)return;const si=row.rowIndex-1;if(e.ctrlKey){if(selectedTableRows.has(si))selectedTableRows.delete(si);else selectedTableRows.add(si);}else{selectedTableRows.clear();selectedTableRows.add(si);}updRowSel();});
+    const updateTableRowSelectionVisuals=updRowSel;
+
+    // Signal context menu
+    tableBody.addEventListener('contextmenu',e=>{
+        const fc=e.target.closest('td:first-child');if(!fc)return;e.preventDefault();
+        const si=fc.parentElement.rowIndex-1;if(!selectedTableRows.has(si)){selectedTableRows.clear();selectedTableRows.add(si);updRowSel();}
+        activeSignalIndexForGeneration=si;
+        const mh=signalContextMenu.offsetHeight,wh=window.innerHeight;let top=e.clientY;if(top+mh>wh)top=e.clientY-mh;
+        signalContextMenu.style.top=`${top}px`;signalContextMenu.style.left=`${e.clientX}px`;signalContextMenu.classList.remove('hidden');
+    });
+    window.addEventListener('contextmenu',e=>{if(!e.target.closest('.sig-name-col'))contextMenu.classList.add('hidden');if(!e.target.closest('td:first-child'))signalContextMenu.classList.add('hidden');},true);
+
+    document.getElementById('delete-signal').addEventListener('click',()=>{signalContextMenu.classList.add('hidden');Array.from(selectedTableRows).sort((a,b)=>b-a).forEach(i=>signals.splice(i,1));selectedTableRows.clear();selectedSignalIndex=null;render();});
+    document.getElementById('duplicate-signal').addEventListener('click',()=>{signalContextMenu.classList.add('hidden');let off=0;Array.from(selectedTableRows).sort((a,b)=>a-b).forEach(i=>{const ns=JSON.parse(JSON.stringify(signals[i+off]));ns.name+='_copy';ns.id=Math.random().toString(36).substr(2,9);signals.splice(i+off+1,0,ns);off++;});selectedTableRows.clear();render();});
+
+    // Generator modal helpers
+    const hideGen=()=>{genModalOverlay.classList.add('hidden');genApplyBtn.textContent='Generate';genApplyBtn.onclick=null;};
+    genCancelBtn.addEventListener('click',hideGen);
+    genModalOverlay.addEventListener('click',e=>{if(e.target===genModalOverlay)hideGen();});
+
+    document.getElementById('generate-clock').addEventListener('click',()=>{
+        signalContextMenu.classList.add('hidden');genModalTitle.textContent='Generate Clock';
+        genModalContent.innerHTML=`<label>Half Period (timesteps)</label><input type="number" id="clk-period" value="1" min="1"><label>Start Value</label><select id="clk-start"><option value="0">0 (low first)</option><option value="1" selected>1 (high first)</option></select>`;
+        genApplyBtn.onclick=()=>{
+            const hp=parseInt(document.getElementById('clk-period').value)||1,sv=document.getElementById('clk-start').value;
+            const sig=signals[activeSignalIndexForGeneration];if(!sig)return;
+            sig.values=Array.from({length:timeStepCount},(_,i)=>{const p=Math.floor(i/hp)%2;return sv==='0'?(p===0?'0':'1'):(p===0?'1':'0');});
+            hideGen();render();};
+        genModalOverlay.classList.remove('hidden');
+    });
+    document.getElementById('generate-reset').addEventListener('click',()=>{
+        signalContextMenu.classList.add('hidden');genModalTitle.textContent='Generate Reset';
+        genModalContent.innerHTML=`<label>De-assert after # cycles</label><input type="number" id="rst-cycles" value="4" min="1"><label>Trigger Edge</label><select id="rst-edge"><option value="posedge">Posedge</option><option value="negedge">Negedge</option></select>`;
+        genApplyBtn.onclick=()=>{
+            const cycles=parseInt(document.getElementById('rst-cycles').value)||4,edge=document.getElementById('rst-edge').value;
+            const sig=signals[activeSignalIndexForGeneration],clk=signals.find(s=>s.name.toLowerCase()==='clk');
+            if(!sig||!clk){alert('A "clk" signal must exist.');return;}
+            let ec=0,di=-1;for(let i=1;i<timeStepCount;i++){const p=clk.values[i-1],c=clk.values[i];if((edge==='posedge'&&p==='0'&&c==='1')||(edge==='negedge'&&p==='1'&&c==='0')){ec++;if(ec===cycles){di=i;break;}}}
+            sig.values=Array.from({length:timeStepCount},(_,i)=>di===-1||i<di?'0':'1');hideGen();render();};
+        genModalOverlay.classList.remove('hidden');
+    });
+    document.getElementById('generate-fsm').addEventListener('click',()=>{
+        signalContextMenu.classList.add('hidden');genModalTitle.textContent='Generate FSM States';
+        genModalContent.innerHTML=`<label>Range</label><input type="text" id="fsm-range" value="[7:0]"><label>Number of States</label><input type="number" id="fsm-count" value="2" min="1"><div id="fsm-entries" style="margin-top:8px;"></div>`;
+        const cnt=document.getElementById('fsm-count'),ent=document.getElementById('fsm-entries');
+        const updEnt=()=>{const n=parseInt(cnt.value)||0;ent.innerHTML='';for(let i=0;i<n;i++){const d=document.createElement('div');d.className='fsm-state-entry';d.innerHTML=`<input type="text" class="fsm-name" placeholder="State ${i+1}"><input type="number" class="fsm-cycles" value="1" min="1">`;ent.appendChild(d);}};
+        cnt.addEventListener('input',updEnt);updEnt();
+        genApplyBtn.onclick=()=>{
+            const sig=signals[activeSignalIndexForGeneration];if(!sig)return;
+            const range=document.getElementById('fsm-range').value;
+            const pattern=Array.from(document.querySelectorAll('.fsm-state-entry')).map(e=>({name:e.querySelector('.fsm-name').value||e.querySelector('.fsm-name').placeholder,cycles:parseInt(e.querySelector('.fsm-cycles').value)||1})).filter(s=>s.name.trim());
+            if(!pattern.length){hideGen();return;}
+            const vals=[];let pi=0;while(vals.length<timeStepCount){const cs=pattern[pi%pattern.length];for(let i=0;i<cs.cycles&&vals.length<timeStepCount;i++)vals.push(cs.name);pi++;}
+            sig.values=vals;sig.range=range;hideGen();render();};
+        genModalOverlay.classList.remove('hidden');
+    });
+
+    // ===== AI PANEL =====
+    const aiPanel = document.getElementById('aiPanel');
+    const aiToggleBtn = document.getElementById('aiToggleBtn');
+    const aiCloseBtn = document.getElementById('aiCloseBtn');
+
+    const openAiPanel = () => { aiPanel.classList.remove('collapsed'); aiToggleBtn.classList.add('active'); };
+    const closeAiPanel = () => { aiPanel.classList.add('collapsed'); aiToggleBtn.classList.remove('active'); };
+
+    aiToggleBtn.addEventListener('click', () => { if (aiPanel.classList.contains('collapsed')) openAiPanel(); else closeAiPanel(); });
+    aiCloseBtn.addEventListener('click', closeAiPanel);
+
+    // Model select custom
+    document.getElementById('ai-model').addEventListener('change', e => {
+        document.getElementById('custom-model-wrap').style.display = e.target.value === 'custom' ? 'flex' : 'none';
+    });
+
+    // AI signal/scenario rows
+    const aiAddSignalRow = () => {
+        const c = document.getElementById('ai-signals-container');
+        const d = document.createElement('div'); d.className = 'ai-sig-row';
+        d.innerHTML = `<input type="text" class="ai-sig-name sig-n" placeholder="Signal name"><input type="text" class="ai-sig-range sig-r" placeholder="[7:0]">`;
+        c.appendChild(d);
+    };
+    const aiAddScenarioRow = () => {
+        const c = document.getElementById('ai-scenarios-container');
+        const d = document.createElement('div'); d.className = 'ai-scenario-row';
+        d.innerHTML = `<textarea class="ai-scenario" placeholder="Describe a scenario (e.g. clk toggles, reset deasserts after 4 cycles)..."></textarea><button class="scenario-del-btn" title="Remove scenario"><i class="ph ph-x"></i></button>`;
+        d.querySelector('.scenario-del-btn').addEventListener('click', () => d.remove());
+        c.appendChild(d);
+    };
+
+    document.getElementById('ai-add-signal-btn').addEventListener('click', aiAddSignalRow);
+    document.getElementById('ai-add-scenario-btn').addEventListener('click', aiAddScenarioRow);
+
+    // Initialize default rows
+    aiAddSignalRow(); aiAddSignalRow();
+    aiAddScenarioRow();
+
+    // AI Run
+    document.getElementById('ai-run-btn').addEventListener('click', async () => {
+        const apiKey = document.getElementById('ai-api-key').value.trim();
+        const modelSel = document.getElementById('ai-model').value;
+        const model = modelSel === 'custom' ? (document.getElementById('ai-model-custom').value.trim() || 'gpt-3.5-turbo') : modelSel;
+        const designName = document.getElementById('ai-design-name').value.trim();
+        const sigNames = Array.from(document.querySelectorAll('.ai-sig-name'));
+        const sigRanges = Array.from(document.querySelectorAll('.ai-sig-range'));
+        const sigsList = sigNames.map((inp,i)=>({name:inp.value.trim(),range:sigRanges[i]?.value.trim()||''})).filter(s=>s.name);
+        const scenarios = Array.from(document.querySelectorAll('.ai-scenario')).map(t=>t.value.trim()).filter(Boolean);
+
+        const statusEl = document.getElementById('ai-status');
+        const runBtn = document.getElementById('ai-run-btn');
+
+        const showStatus = (msg, type='info') => { statusEl.textContent=msg; statusEl.className=`ai-status ${type}`; statusEl.style.display='block'; };
+
+        if (!apiKey) { showStatus('OpenAI API key is required.', 'error'); return; }
+        if (!designName) { showStatus('Please enter a design name.', 'error'); return; }
+        if (!sigsList.length) { showStatus('Add at least one signal.', 'error'); return; }
+        if (!scenarios.length) { showStatus('Add at least one scenario.', 'error'); return; }
+
+        const totalTs = Math.max(1, parseInt(document.getElementById('ai-total-timesteps').value) || 40);
+        const perScenario = Math.max(1, Math.floor(totalTs / scenarios.length));
+        const tc = perScenario * scenarios.length;
+        const prompt = `For a design named "${designName}", create a CSV of waveform data with the following signals: ${sigsList.map(s=>`"${s.name}" (Range: ${s.range||'1-bit'})`).join(', ')}. The CSV must have these columns: "Signal Name", "Range", and then integer timesteps from 0 up to ${tc-1}. Generate signal values based on these scenarios: ${scenarios.map((s,i)=>`Scenario ${i+1} (timesteps ${i*perScenario}-${i*perScenario+perScenario-1}): "${s}"`).join('; ')}. For 1-bit signals use only 0, 1, X, Z. For bus signals use hex (0xFF) or decimal or state names. Important: Your entire response must be ONLY the raw CSV data, with no introduction, explanation, or markdown formatting.`;
+
+        showStatus('Generating...', 'info');
+        runBtn.disabled = true;
+
+        try {
+            const res = await fetch('https://api.openai.com/v1/chat/completions', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+                body: JSON.stringify({ model, messages: [{ role: 'user', content: prompt }] })
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error?.message || `API error ${res.status}`);
+            const csv = data.choices?.[0]?.message?.content || '';
+            if (csv) { parseCsv(csv); showStatus(`✓ Generated ${tc} timesteps across ${scenarios.length} scenario(s).`, 'ok'); }
+            else showStatus('No CSV returned.', 'error');
+        } catch (e) {
+            showStatus(`Error: ${e.message}`, 'error');
+        } finally {
+            runBtn.disabled = false;
+        }
+    });
+
+    // ===== VERILOG RTL GENERATOR =====
+    const hlVerilog = code => {
+        let h = code.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+        h = h.replace(/(\/\/.*$)/gm,'<span class="comment">$1</span>');
+        ['module','endmodule','input','output','inout','reg','wire','logic','always','begin','end','if','else','case','casez','endcase','parameter','localparam','posedge','negedge','assign','initial','forever','generate','endgenerate','genvar','task','endtask','function','endfunction'].forEach(k=>{h=h.replace(new RegExp(`\\b(${k})\\b`,'g'),'<span class="kw">$1</span>');});
+        ['integer','real','time','bit','byte','int','void'].forEach(t=>{h=h.replace(new RegExp(`\\b(${t})\\b`,'g'),'<span class="type">$1</span>');});
+        return h;
+    };
+
+    const genVerilog = () => {
+        const mod = document.getElementById('verilog-module-name').value.trim()||'design_top';
+        const genAlways=document.getElementById('chk-always').checked,genAsync=document.getElementById('chk-async-reset').checked;
+        const genFsm=document.getElementById('chk-fsm').checked,genTb=document.getElementById('chk-tb').checked;
+        const clkSig=signals.find(s=>/^clk|^clock/.test(s.name.toLowerCase()));
+        const rstSig=signals.find(s=>/^rst|^reset/.test(s.name.toLowerCase()));
+        const clkName=clkSig?clkSig.name:'clk',rstName=rstSig?rstSig.name:'rst_n';
+        const rstActive=rstSig&&rstSig.name.includes('_n')?'!':'';
+        const inputs=[],outputs=[];
+        signals.filter(s=>!s.isBusMember).forEach(sig=>{
+            const rm=sig.range.match(/\[(\d+):(\d+)\]/),width=rm?`[${rm[1]}:${rm[2]}]`:'';
+            const isClk=/^clk|^clock/.test(sig.name.toLowerCase()),isRst=/^rst|^reset/.test(sig.name.toLowerCase());
+            const isOut=/out$|_o$|^q/.test(sig.name.toLowerCase());
+            if(isClk||isRst||!isOut)inputs.push({name:sig.name,width});
+            if(isOut)outputs.push({name:sig.name,width});
+        });
+        const fsmDefs=genFsm?signals.filter(s=>!s.isBusMember&&s.range.includes(':')).map(sig=>{
+            const states=new Set();sig.values.forEach(v=>{const p=parseValue(v).value;if(p&&!['X','Z'].includes(p.toUpperCase())&&isNaN(parseInt(p,16)))states.add(p);});
+            return states.size?{name:sig.name,states:Array.from(states)}:null;}).filter(Boolean):[];
+        const fsmParams=fsmDefs.flatMap(f=>{const b=Math.max(1,Math.ceil(Math.log2(f.states.length+1)));return f.states.map((s,i)=>`  localparam ${s.toUpperCase().replace(/[^A-Z0-9_]/g,'_')} = ${b}'d${i};`);});
+        const allPorts=[...inputs.map(p=>`  input  wire ${p.width?p.width+' ':''}${p.name}`),...outputs.map(p=>`  output reg  ${p.width?p.width+' ':''}${p.name}`)];
+        let ab='';
+        if(genAlways){
+            const rst=outputs.map(o=>`    ${o.name} <= ${o.width?`${o.width.match(/\d+/)?.[0]}'h0`:"1'b0"};`);
+            const fRst=fsmDefs.map(f=>`    ${f.name} <= ${f.states[0]?.toUpperCase().replace(/[^A-Z0-9_]/g,'_')||'0'};`);
+            const sens=genAsync?`posedge ${clkName} or negedge ${rstName}`:`posedge ${clkName}`;
+            ab=`\nalways @(${sens}) begin\n  if (${rstActive}${rstName}) begin\n${[...rst,...fRst].join('\n')||'    // Reset'}\n  end else begin\n    // Sequential logic\n${fsmDefs.map(f=>`    case (${f.name})\n${f.states.map((s,i)=>`      ${s.toUpperCase().replace(/[^A-Z0-9_]/g,'_')}: begin\n        ${f.name} <= ${(f.states[(i+1)%f.states.length]||f.states[0]).toUpperCase().replace(/[^A-Z0-9_]/g,'_')};\n      end`).join('\n')}\n      default: ${f.name} <= ${f.states[0]?.toUpperCase().replace(/[^A-Z0-9_]/g,'_')||'0'};\n    endcase`).join('\n')}\n  end\nend\n`;}
+        const moduleCode=[`// Auto-generated by SS Wave Gen`,`// Module: ${mod} | Timesteps: ${timeStepCount}`,`// ${new Date().toISOString()}`,``,fsmParams.length?fsmParams.join('\n')+'\n':'',`module ${mod} (`,allPorts.join(',\n'),`);`,ab,`endmodule`].filter(Boolean).join('\n');
+        let fsmCode='// No FSM signals detected';
+        if(fsmDefs.length)fsmCode=fsmDefs.map(f=>{const b=Math.max(1,Math.ceil(Math.log2(f.states.length+1)));return `// FSM: ${f.name} (${b}-bit, ${f.states.length} states)\nreg [${b-1}:0] ${f.name};\n\nalways @(posedge ${clkName}) begin\n  case (${f.name})\n${f.states.map((s,i)=>`    ${s.toUpperCase().replace(/[^A-Z0-9_]/g,'_')}: ${f.name} <= ${(f.states[(i+1)%f.states.length]||f.states[0]).toUpperCase().replace(/[^A-Z0-9_]/g,'_')};`).join('\n')}\n    default: ${f.name} <= ${f.states[0]?.toUpperCase().replace(/[^A-Z0-9_]/g,'_')||'0'};\n  endcase\nend`;}).join('\n\n');
+        let tbCode='// Testbench disabled';
+        if(genTb){
+            const tRegs=inputs.map(p=>`  reg  ${p.width?p.width+' ':''}${p.name};`).join('\n');
+            const tWires=outputs.map(p=>`  wire ${p.width?p.width+' ':''}${p.name};`).join('\n');
+            const pInst=[...inputs.map(p=>`.${p.name}(${p.name})`),...outputs.map(p=>`.${p.name}(${p.name})`)].join(',\n    ');
+            const stim=[];
+            for(let t=0;t<Math.min(timeStepCount,20);t++){
+                const asgn=signals.filter(s=>!s.isBusMember&&inputs.some(p=>p.name===s.name)).map(s=>{const v=parseValue(s.values[t]).value,pw=inputs.find(x=>x.name===s.name)?.width?.match(/\d+/)?.[0]||1;const fmt=['X','Z'].includes(v.toUpperCase())?`{${pw}{1'b${v.toLowerCase()}}}`:(v.startsWith('0x')?`${pw}'h${v.slice(2)}`:(parseInt(v)<=1&&pw<=1?`1'b${v}`:`${pw}'d${v}`));return `    ${s.name} = ${fmt};`;}).join('\n');
+                if(asgn)stim.push(`    // T=${t}\n${asgn}`);
+            }
+            tbCode=`\`timescale 1ns/1ps\nmodule tb_${mod};\n${tRegs}\n${tWires}\n\n  ${mod} dut (\n    ${pInst}\n  );\n\n${clkSig?`  initial ${clkName} = 0;\n  always #5 ${clkName} = ~${clkName};\n`:''}\n  initial begin\n    $dumpfile("tb_${mod}.vcd");\n    $dumpvars(0, tb_${mod});\n${stim.join('\n    #10;\n\n')}\n    #10; $finish;\n  end\nendmodule`;}
+        return{module:moduleCode,fsm:fsmCode,tb:tbCode};
+    };
+
+    // Modal tabs
+    document.querySelectorAll('.modal-tab').forEach(tab=>{
+        tab.addEventListener('click',()=>{
+            const id=tab.dataset.tab;
+            document.querySelectorAll('.modal-tab').forEach(t=>t.classList.remove('active'));
+            document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+            tab.classList.add('active'); document.getElementById(`tab-${id}`)?.classList.add('active');
+        });
+    });
+
+    document.getElementById('verilogBtn').addEventListener('click',()=>{
+        if(!document.getElementById('verilog-module-name').value){
+            const dn=document.getElementById('ai-design-name').value;
+            document.getElementById('verilog-module-name').value=dn?dn.toLowerCase().replace(/\s+/g,'_').replace(/[^a-z0-9_]/g,''):'design_top';
+        }
+        const bs=signals.filter(s=>!s.isBusMember&&s.range.includes(':'));
+        const bits=signals.filter(s=>!s.isBusMember&&!s.range.includes(':'));
+        const fsms=signals.filter(s=>!s.isBusMember&&s.range.includes(':')&&s.values.some(v=>{const p=parseValue(v).value;return isNaN(parseInt(p,16))&&!['X','Z'].includes(p.toUpperCase());}));
+        document.getElementById('verilog-stats').innerHTML=`<span class="stat-chip info">${timeStepCount} timesteps</span><span class="stat-chip ok">${bits.length} bit signals</span><span class="stat-chip ok">${bs.length} bus signals</span>${fsms.length?`<span class="stat-chip warn">${fsms.length} FSM detected</span>`:''}`;
+        verilogModalOverlay.classList.remove('hidden');
+    });
+    document.getElementById('verilog-generate-btn').addEventListener('click',()=>{
+        const{module,fsm,tb}=genVerilog();
+        document.getElementById('verilog-module-output').innerHTML=hlVerilog(module);
+        document.getElementById('verilog-fsm-output').innerHTML=hlVerilog(fsm);
+        document.getElementById('verilog-tb-output').innerHTML=hlVerilog(tb);
+        document.querySelectorAll('.modal-tab').forEach(t=>t.classList.remove('active'));
+        document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+        document.querySelector('[data-tab="module"]').classList.add('active');
+        document.getElementById('tab-module').classList.add('active');
+    });
+    document.getElementById('verilog-cancel-btn').addEventListener('click',()=>verilogModalOverlay.classList.add('hidden'));
+    verilogModalOverlay.addEventListener('click',e=>{if(e.target===verilogModalOverlay)verilogModalOverlay.classList.add('hidden');});
+
+    const mkCopy=(btnId,srcId)=>{document.getElementById(btnId).addEventListener('click',()=>{const el=document.getElementById(srcId);navigator.clipboard.writeText(el.innerText||el.textContent).then(()=>{const b=document.getElementById(btnId);b.textContent='Copied!';b.classList.add('copied');setTimeout(()=>{b.textContent='Copy';b.classList.remove('copied');},2000);});});};
+    mkCopy('copy-module-btn','verilog-module-output');
+    mkCopy('copy-fsm-btn','verilog-fsm-output');
+    mkCopy('copy-tb-btn','verilog-tb-output');
+
+    // ===== INIT =====
+    timeStepCount = 16;
+    signals.push(Object.assign(createSignal('clk','',['1','0','1','0','1','0','1','0','1','0','1','0','1','0','1','0']),{color:'#6b46c1'}));
+    signals.push(Object.assign(createSignal('rst_n','',['0','0','1','1','1','1','1','1','1','1','1','1','1','1','1','1']),{color:'#c42b1c'}));
+    signals.push(createSignal('addr[7:0]','[7:0]',['0x00','0x00','0x10','0x10','0x2A','0x2A','0x2A','0x2A','X','X','0xFE','0xFE','0xFE','0xFE','0xFE','0xFE']));
+    signals.push(createSignal('data_out[31:0]','[31:0]',['0x0','0x0','0x0','0xDEAD','0xDEAD','0xBEEF','0xBEEF','0xBEEF','X','X','0x1234','0x1234','0x5678','0x5678','0x5678','0x5678']));
+    signals.push(createSignal('valid','',['0','0','1','1','1','1','1','0','0','0','1','1','1','1','0','0']));
+    signals.push(createSignal('ready','',['0','0','0','1','0','1','0','1','0','0','1','0','1','0','1','0']));
+    signals.push(Object.assign(createSignal('state[7:0]','[7:0]',['IDLE','IDLE','FETCH','FETCH','DECODE','DECODE','EXECUTE','EXECUTE','STALL','STALL','WRITEBACK','WRITEBACK','IDLE','IDLE','IDLE','IDLE']),{color:'#107c10'}));
+    render();
+});
+</script>
 </body>
 </html>
